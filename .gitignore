@@ -1,0 +1,8 @@
+        Lib/
+        Scripts/
+        __init__.py
+        __pycache__/
+        output/
+        saved_results/
+        share/
+        uploads/

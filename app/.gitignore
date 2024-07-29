@@ -1,0 +1,12 @@
+        Lib/
+        Lib_copy/
+        Include/
+        Include_copy/
+        Scripts/
+        Scripts_copy/
+        __init__.py
+        __pycache__/
+        output/
+        saved_results/
+        share/
+        uploads/
