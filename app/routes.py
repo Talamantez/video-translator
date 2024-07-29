@@ -13,7 +13,7 @@ main = Blueprint("main", __name__)
 @main.route("/")
 def index():
     current_app.logger.debug(f"Current working directory: {os.getcwd()}")
-    current_app.logger.debug(f"Does index.html exist: {os.path.exists('index.html')}")
+    current_app.logger.debug(f"Does index.html exist: {os.path.exists('app/templates/index.html')}")
     return render_template("index.html")
 
 @main.route("/upload", methods=["POST"])
