@@ -1,48 +1,38 @@
-from flask import current_app
 import os
-import subprocess
 import yt_dlp
+from moviepy.editor import VideoFileClip
 
-from app.utils.video_splitter import get_video_duration
 
-def process_video_file(input_file, output_folder, clip_duration=30):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+def process_video_file(input_file, output_folder, clip_duration=10):
+    clip = VideoFileClip(input_file)
+    total_duration = clip.duration
 
-    clips = []
-    total_duration = get_video_duration(input_file)
+    if clip_duration is None or clip_duration <= 0:
+        clip_duration = 10  # Default to 10 seconds if clip_duration is invalid
+
     num_clips = int(total_duration // clip_duration) + 1
+    clips = []
 
     for i in range(num_clips):
         start_time = i * clip_duration
         end_time = min((i + 1) * clip_duration, total_duration)
-
-        output_file = os.path.join(output_folder, f"clip_{i+1:03d}.mp4")
         
-        # Remove the file if it already exists
-        if os.path.exists(output_file):
-            os.remove(output_file)
+        subclip = clip.subclip(start_time, end_time)
         
-        try:
-            subprocess.run([
-                'ffmpeg',
-                '-i', input_file,
-                '-ss', str(start_time),
-                '-to', str(end_time),
-                '-c', 'copy',
-                '-y',  # This flag tells ffmpeg to overwrite without prompting
-                output_file
-            ], check=True, stderr=subprocess.PIPE)
+        output_filename = f"clip_{i+1}.mp4"
+        output_path = os.path.join(output_folder, output_filename)
+        
+        subclip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+        
+        clips.append({
+            "filename": output_filename,
+            "start_time": start_time,
+            "end_time": end_time,
+            "duration": end_time - start_time
+        })
 
-            clips.append({
-                'filename': f"clip_{i+1:03d}.mp4",
-                'start': start_time,
-                'end': end_time
-            })
-        except subprocess.CalledProcessError as e:
-            current_app.logger.error(f"Error processing clip {i+1}: {e.stderr.decode()}")
-            # You might want to handle this error, e.g., skip this clip or raise an exception
-
+    clip.close()
+    
     return clips
 
 def download_streaming_video(url, output_path):

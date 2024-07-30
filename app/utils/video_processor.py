@@ -20,7 +20,7 @@ def speech_to_text(audio_path):
         text = recognizer.recognize_google(audio)
         return text
     except sr.UnknownValueError:
-        return "Speech recognition could not understand audio"
+        return ""
 
 def ocr_from_video(video_path):
     video = cv2.VideoCapture(video_path)

@@ -3,12 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video Processor with Comprehension and Translation</title>
+    <title>
+      VideoInsight: Multi-Modal Video Analysis and Summarization Platform
+    </title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
     <style>
+      h6 {
+        font-weight: bold;
+      }
       .text-content {
         max-height: 150px;
         overflow-y: auto;
@@ -37,18 +42,15 @@
         border-radius: 5px;
         padding: 15px;
       }
-      #savedResultsList {
-        margin-top: 20px;
-      }
       .side-menu {
         position: fixed;
-        top: 0;
-        right: -300px;
-        width: 300px;
+        right: -700px;
+        width: 700px;
         height: 100%;
         background-color: #f8f9fa;
         transition: right 0.3s ease-in-out;
         padding: 20px;
+        margin-top: 40px;
         overflow-y: auto;
       }
       .side-menu.open {
@@ -68,6 +70,208 @@
       .saved-result-item:hover {
         background-color: #e9ecef;
       }
+      #progressContainer {
+        display: none;
+        margin-top: 20px;
+      }
+      #progressBar {
+        height: 20px;
+      }
+      #progressText {
+        margin-top: 10px;
+        font-style: italic;
+      }
+      .clip-placeholder {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #f8f9fa;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+      .placeholder-text {
+        color: #6c757d;
+        text-align: center;
+        font-style: italic;
+      }
+      .clip {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+        background-color: #fff;
+      }
+      /* New styles for the summary column */
+      .content-wrapper {
+        display: flex;
+        width: 100%;
+      }
+      .summary-column {
+        width: 30%;
+        padding: 15px;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        max-height: 600px;
+      }
+      .video-column {
+        width: 70%;
+        padding: 15px;
+      }
+      .summary-item {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+      }
+      .video-heading {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+      }
+      .video-container {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      .video-info {
+        margin-bottom: 10px;
+        font-style: italic;
+        color: #666;
+      }
+      .content-wrapper {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      }
+      .text-content {
+        margin-top: 20px;
+      }
+      .image-recognition-results {
+        margin-top: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+      }
+      .project-title {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .project-title h1 {
+        font-size: 2.5rem;
+        color: #007bff;
+      }
+      .project-title h2 {
+        font-size: 1.5rem;
+        color: #6c757d;
+        font-weight: normal;
+      }
+      .running-summary {
+        background-color: #e9ecef;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+      .running-summary h4 {
+        margin-top: 0;
+      }
+      .summary-section {
+        margin-bottom: 10px;
+      }
+      .summary-section h5 {
+        margin-bottom: 5px;
+      }
+      .summary-list {
+        list-style-type: none;
+        padding-left: 0;
+        margin-bottom: 0;
+      }
+      .summary-list li {
+        display: inline-block;
+        background-color: #007bff;
+        color: white;
+        padding: 2px 8px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border-radius: 3px;
+        font-size: 0.9em;
+      }
+      .important-sentences {
+        margin-top: 15px;
+      }
+      .important-sentences ul {
+        list-style-type: none;
+        padding-left: 0;
+      }
+      .important-sentences li {
+        background-color: #f8f9fa;
+        border-left: 3px solid #007bff;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-style: italic;
+      }
+      .fake-video-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .fake-video-badge.pass {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .fake-video-badge.alert {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+      }
+      .fake-video-info {
+        background-color: #e9ecef;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        font-size: 0.9em;
+      }
+      .fake-video-info ul {
+        list-style-type: none;
+        padding-left: 0;
+      }
+      
+      .fake-video-info li {
+        margin-bottom: 10px;
+      }
+      
+      .fake-video-info li strong {
+        display: inline-block;
+        width: 200px;
+      }
+      
+      .fake-video-info li:before {
+        content: "";
+        display: inline-block;
+        width: 20px;
+        text-align: center;
+      }
+      
+      .fake-video-info li:contains("✓"):before {
+        content: "✓";
+        color: green;
+      }
+      
+      .fake-video-info li:contains("⚠"):before {
+        content: "⚠";
+        color: orange;
+      }
     </style>
   </head>
   <body>
@@ -75,12 +279,14 @@
       Saved Results
     </button>
     <div class="side-menu" id="sideMenu">
-      <h3>Saved Results</h3>
       <div id="savedResultsList"></div>
     </div>
 
     <div class="container mt-5">
-      <h1 class="mb-4">Video Processor with Comprehension and Translation</h1>
+      <div class="project-title">
+        <h1>VideoInsight</h1>
+        <h2>Multi-Modal Video Analysis and Summarization Platform</h2>
+      </div>
       <div class="mb-3 mt-3">
         <label for="targetLanguage" class="form-label"
           >Translate into which language?</label
@@ -92,50 +298,78 @@
           <option value="de">German</option>
         </select>
       </div>
-      <div class="container mt-5">
-        <div class="mb-3">
-          <label for="videoUrl" class="form-label">Video URL</label>
-          <input
-            class="form-control"
-            type="url"
-            id="videoUrl"
-            placeholder="Enter video URL"
-          />
-          <small class="form-text text-muted"
-            >Supports YouTube, Vimeo, and many other video sites!</small
-          >
-        </div>
-        <div class="mb-3">
-          <label for="clipDurationUrl" class="form-label"
-            >We'll split the video into clips of the following length (seconds)</label
-          >
-          <input
-            type="number"
-            class="form-control"
-            id="clipDurationUrl"
-            value="30"
-            min="1"
-          />
-        </div>
-        <button id="processUrlBtn" class="btn btn-primary">
-          Process URL
-        </button>
-        <div class="progress mt-3 mb-3" style="display: none">
+      <div class="mb-3">
+        <label for="videoUrl" class="form-label">Video URL</label>
+        <input
+          class="form-control"
+          type="url"
+          id="videoUrl"
+          placeholder="Enter video URL"
+        />
+        <small class="form-text text-muted"
+          >Supports YouTube, Vimeo, and many other video sites!</small
+        >
+      </div>
+      <div class="mb-3">
+        <label for="clipDurationUrl" class="form-label"
+          >Clip Length (seconds)</label
+        >
+        <input
+          type="number"
+          class="form-control"
+          id="clipDurationUrl"
+          value="30"
+          min="1"
+        />
+      </div>
+      <button id="processUrlBtn" class="btn btn-primary">Process URL</button>
+      <div class="mb-3 mt-3">
+        <label for="videoFile" class="form-label">Upload Video File</label>
+        <input class="form-control" type="file" id="videoFile" accept="video/*">
+        <small class="form-text text-muted">Supported formats: MP4, WebM, Ogg</small>
+      </div>
+      <div class="mb-3">
+        <label for="clipDurationFile" class="form-label">Clip Length for Uploaded Video (seconds)</label>
+        <input type="number" class="form-control" id="clipDurationFile" value="30" min="1">
+      </div>
+      <button id="processFileBtn" class="btn btn-primary">Process Uploaded Video</button>
+      <div id="progressContainer" class="mt-3">
+        <div class="progress">
           <div
-            class="progress-bar"
+            id="progressBar"
+            class="progress-bar progress-bar-striped progress-bar-animated"
             role="progressbar"
-            style="width: 0%"
             aria-valuenow="0"
             aria-valuemin="0"
             aria-valuemax="100"
-          >
-            0%
+          ></div>
+        </div>
+        <div id="progressText" class="mt-2"></div>
+      </div>
+      <div class="progress mt-3 mb-3" style="display: none">
+        <div
+          class="progress-bar"
+          role="progressbar"
+          style="width: 0%"
+          aria-valuenow="0"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          0%
+        </div>
+      </div>
+      <div class="progress-status mt-2 mb-2"></div>
+
+      <!-- New content wrapper for summary and video columns -->
+      <div class="content-wrapper">
+        <div class="video-column">
+          <div id="urlResults" class="mt-3">
+            <!-- This is where the processed video clips and transcriptions will be dynamically inserted -->
           </div>
         </div>
-        <div class="progress-status mt-2 mb-2"></div>
-
-        <div id="urlResults" class="mt-3"></div>
       </div>
+    </div>
+
     <div class="container mt-5">
       <div id="error" class="mt-3 error-message"></div>
       <div id="progress" class="mt-3"></div>
@@ -159,12 +393,14 @@
 
     <!-- Toast container -->
     <div class="toast-container"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
       const videoUrl = document.getElementById("videoUrl");
       const clipDurationFile = document.getElementById("clipDurationFile");
       const clipDurationUrl = document.getElementById("clipDurationUrl");
+      const videoFile = document.getElementById("videoFile");
       const processUrlBtn = document.getElementById("processUrlBtn");
       const progress = document.getElementById("progress");
       const errorDiv = document.getElementById("error");
@@ -175,25 +411,41 @@
       const sideMenu = document.getElementById("sideMenu");
       const savedResultsList = document.getElementById("savedResultsList");
 
-      function updateSavedResultsList() {
-        fetch("/list_saved_results")
-          .then((response) => response.json())
-          .then((results) => {
-            savedResultsList.innerHTML = "<h5>Saved Results:</h5>";
-            results.forEach((result) => {
-              const resultElement = document.createElement("div");
-              resultElement.innerHTML = `
-                <input type="radio" name="savedResult" value="${result}" id="${result}">
-                <label for="${result}">${result}</label>
-              `;
-              savedResultsList.appendChild(resultElement);
-            });
-          })
-          .catch((error) => {
-            console.error("Error fetching saved results:", error);
-            showToast("Error fetching saved results", "danger");
-          });
-      }
+      processFileBtn.addEventListener("click", () => {
+        const file = videoFile.files[0];
+        if (!file) {
+          showToast("Please select a video file to upload", "warning");
+          return;
+        }
+      
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("clipDuration", clipDurationFile.value);
+        formData.append("targetLanguage", document.getElementById("targetLanguage").value);
+      
+        processVideoFile(formData);
+      });
+
+      processUrlBtn.addEventListener("click", () => {
+        if (!videoUrl.value) {
+          showToast("Please enter a URL to process", "warning");
+          return;
+        }
+        processVideo(
+          "/process_url",
+          {
+            url: videoUrl.value,
+            clipDuration: parseInt(clipDurationUrl.value),
+            targetLanguage: document.getElementById("targetLanguage").value,
+          },
+          urlResults
+        );
+      });
+
+      sideMenuToggle.addEventListener("click", () => {
+        sideMenu.classList.toggle("open");
+      });
+
       saveResultBtn.addEventListener("click", () => {
         const resultName = resultNameInput.value.trim();
         if (!resultName) {
@@ -232,13 +484,13 @@
         toast.setAttribute("aria-atomic", "true");
 
         toast.innerHTML = `
-    <div class="d-flex">
-      <div class="toast-body">
-        ${message}
-      </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-  `;
+          <div class="d-flex">
+            <div class="toast-body">
+              ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
 
         toastContainer.appendChild(toast);
         const bsToast = new bootstrap.Toast(toast);
@@ -251,36 +503,38 @@
 
       function displayClips(clips, outputFolder, resultContainer) {
         resultContainer.innerHTML = "";
+        const summaryColumn = document.getElementById("summaryColumn");
+
         if (clips && clips.length > 0) {
           const clipContainer = document.createElement("div");
           clipContainer.className = "clip-container";
 
-          clips.forEach((clip) => {
+          clips.forEach((clip, index) => {
             const clipElement = document.createElement("div");
             clipElement.className = "clip";
             clipElement.innerHTML = `
-        <h5>Clip ${clip.filename}</h5>
-        <p>Start: ${clip.start ? clip.start.toFixed(2) : "N/A"}s | End: ${
+              <h5>Clip ${clip.filename}</h5>
+              <p>Start: ${clip.start ? clip.start.toFixed(2) : "N/A"}s | End: ${
               clip.end ? clip.end.toFixed(2) : "N/A"
             }s</p>
-        <video width="20%" controls>
-          <source src="/output/${outputFolder}/${
+              <video width="20%" controls>
+                <source src="/output/${outputFolder}/${
               clip.filename
             }" type="video/mp4">
-        </video>
-        <h6>Speech Recognition:</h6>
-        <div class="text-content">${
-          clip.speech_text || "No speech detected."
-        }</div>
-        <h6>OCR Text:</h6>
-        <div class="text-content">${
-          clip.ocr_text || "No text detected in video."
-        }</div>
-        <h6>Translated Text:</h6>
-        <div class="text-content">${
-          clip.translated_text || "Translation not available."
-        }</div>
-      `;
+              </video>
+              <h6>Speech Recognition:</h6>
+              <div class="text-content">${
+                clip.speech_text || "No speech detected."
+              }</div>
+              <h6>OCR Text:</h6>
+              <div class="text-content">${
+                clip.ocr_text || "No text detected in video."
+              }</div>
+              <h6>Translation:</h6>
+              <div class="text-content">${
+                clip.translated_text || "Translation not available."
+              }</div>
+            `;
             clipContainer.appendChild(clipElement);
           });
 
@@ -290,11 +544,125 @@
             "<p>No clips were generated. The video might be too short or there was an error during processing.</p>";
         }
       }
-      // Add this function to your existing JavaScript
+
+      function displayFakeVideoAnalysis(fakeDetectionResult) {
+        const badgeClass = fakeDetectionResult.potential_manipulation
+          ? "alert"
+          : "pass";
+        const badgeText = fakeDetectionResult.potential_manipulation
+          ? "Potential Manipulation Detected"
+          : "No Manipulation Detected";
+      
+        let analysisHtml = `
+          <div class="fake-video-badge ${badgeClass}">
+            ${badgeText}
+          </div>
+          <div class="fake-video-info">
+            <h5>Detailed Video Analysis Report</h5>
+            <p>Our system performed a comprehensive analysis to check for potential video manipulation:</p>
+            <ul>
+              <li><strong>Frame Rate Analysis:</strong> ${getAnalysisDetail(fakeDetectionResult, 'frame_rate')}</li>
+              <li><strong>Video Quality Consistency:</strong> ${getAnalysisDetail(fakeDetectionResult, 'quality')}</li>
+              <li><strong>Facial Proportion Changes:</strong> ${getAnalysisDetail(fakeDetectionResult, 'facial_proportions')}</li>
+              <li><strong>Color Distribution Analysis:</strong> ${getAnalysisDetail(fakeDetectionResult, 'color_distribution')}</li>
+            </ul>
+        `;
+      
+        if (fakeDetectionResult.potential_manipulation) {
+          analysisHtml += `
+            <p><strong>Potential issues detected:</strong></p>
+            <ul>
+              ${fakeDetectionResult.reasons.map(reason => `<li>${reason}</li>`).join('')}
+            </ul>
+            <p>These findings suggest that the video may have been altered. However, please note that some legitimate editing techniques or unique filming conditions can occasionally trigger these alerts.</p>
+          `;
+        } else {
+          analysisHtml += `
+            <p><strong>Analysis Conclusion:</strong> Our comprehensive checks did not detect any clear signs of manipulation in this video. The content appears to be consistent with typical unaltered footage.</p>
+          `;
+        }
+      
+        analysisHtml += `
+          <p><strong>Note:</strong> While our analysis is thorough, it's not infallible. Always consider the context of the video and use critical thinking when evaluating its authenticity. If you have concerns about the content, we recommend seeking additional verification from trusted sources.</p>
+        </div>
+        `;
+      
+        return analysisHtml;
+      }
+      
+      function getAnalysisDetail(result, check) {
+        const details = {
+          frame_rate: "We examined the consistency of frame rates throughout the video.",
+          quality: "We looked for unexpected changes in video quality or resolution.",
+          facial_proportions: "We analyzed facial features for unnatural changes or distortions.",
+          color_distribution: "We checked for unusual shifts in color patterns or lighting."
+        };
+      
+        let status = result[check] ? "✓ Passed" : "⚠ Flagged";
+        return `${status} - ${details[check]}`;
+      }
+
+      function displaySummary(summary) {
+        if (!summary || summary.error) {
+          return `<p>${summary ? summary.error : "No summary available"}</p>`;
+        }
+
+        let summaryHtml = "";
+
+        if (summary.entities && summary.entities.length > 0) {
+          summaryHtml += `<p><strong>Key Entities:</strong> ${summary.entities.join(
+            ", "
+          )}</p>`;
+        }
+
+        if (summary.key_phrases && summary.key_phrases.length > 0) {
+          summaryHtml += `<p><strong>Key Phrases:</strong> ${summary.key_phrases.join(
+            ", "
+          )}</p>`;
+        }
+
+        if (
+          summary.important_sentences &&
+          summary.important_sentences.length > 0
+        ) {
+          summaryHtml += `<div class="important-sentences"><h6>Important Sentences:</h6><ul>`;
+          summary.important_sentences.forEach((sentence) => {
+            summaryHtml += `<li>${sentence}</li>`;
+          });
+          summaryHtml += `</ul></div>`;
+        }
+
+        return (
+          summaryHtml || "<p>No meaningful content found in the summary.</p>"
+        );
+      }
+
       async function processVideo(endpoint, data, resultContainer) {
         errorDiv.textContent = "";
-        progress.textContent = "Processing...";
-        showToast("Processing video...", "info");
+        const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressText.textContent = "Initiating video processing...";
+
+        // Clear previous results
+        resultContainer.innerHTML = "";
+
+        let runningSummaryElement = document.createElement("div");
+        runningSummaryElement.id = "runningSummary";
+        resultContainer.insertBefore(
+          runningSummaryElement,
+          resultContainer.firstChild
+        );
+
+        let fakeVideoAnalysisElement = document.createElement("div");
+        fakeVideoAnalysisElement.id = "fakeVideoAnalysis";
+        resultContainer.insertBefore(
+          fakeVideoAnalysisElement,
+          resultContainer.firstChild
+        );
 
         try {
           const response = await fetch(endpoint, {
@@ -309,41 +677,340 @@
             throw new Error(`HTTP error! status: ${response.status}`);
           }
 
-          const result = await response.json();
-          if (result.error) {
-            throw new Error(result.error);
-          } else {
-            displayClips(result.clips, result.output_folder, resultContainer);
-            showToast("Processing complete!", "success");
-            progress.textContent = "Processing complete!";
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let clipCount = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const message = JSON.parse(line);
+                  switch (message.status) {
+                    case "started":
+                      progressText.textContent = message.message;
+                      break;
+                    case "downloading":
+                    case "processing":
+                      progressText.textContent = message.message;
+                      // Update progress bar
+                      const progress =
+                        (progressBar.style.width.replace("%", "") || 0) * 1 + 5;
+                      progressBar.style.width = `${Math.min(progress, 95)}%`;
+                      break;
+                    case "clip_ready":
+                      clipCount++;
+                      displayClip(
+                        message.data.clip,
+                        message.data.output_folder,
+                        resultContainer
+                      );
+                      // Update running summary and project title
+                      runningSummaryElement.innerHTML = displayRunningSummary(
+                        message.data.running_summary
+                      );
+                      progressText.textContent = `Processed ${clipCount} clip(s)`;
+                      break;
+                    case "complete":
+                      progressBar.style.width = "100%";
+                      progressText.textContent = message.message;
+                      // Display final fake video analysis result
+                      if (message.fake_detection_result) {
+                        fakeVideoAnalysisElement.innerHTML =
+                          displayFakeVideoAnalysis(
+                            message.fake_detection_result
+                          );
+                      }
+                      showToast("Processing complete!", "success");
+                      setTimeout(() => {
+                        progressContainer.style.display = "none";
+                      }, 2000);
+                      break;
+                    default:
+                      console.log("Unknown message type:", message);
+                  }
+                } catch (error) {
+                  console.error(
+                    "Error parsing JSON:",
+                    error,
+                    "Raw data:",
+                    line
+                  );
+                }
+              }
+            }
           }
         } catch (error) {
           console.error("Error:", error);
           showToast(`Error: ${error.message}`, "danger");
           errorDiv.textContent = `Error: ${error.message}`;
-          progress.textContent = "";
+          progressContainer.style.display = "none";
         }
       }
 
-      processUrlBtn.addEventListener("click", () => {
-        if (!videoUrl.value) {
-          showToast("Please enter a URL to process", "warning");
-          return;
+      async function processVideoFile(formData) {
+        errorDiv.textContent = "";
+        const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar");
+        const progressText = document.getElementById("progressText");
+      
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressText.textContent = "Uploading video...";
+      
+        // Clear previous results
+        urlResults.innerHTML = "";
+      
+        let runningSummaryElement = document.createElement("div");
+        runningSummaryElement.id = "runningSummary";
+        urlResults.insertBefore(runningSummaryElement, urlResults.firstChild);
+      
+        let fakeVideoAnalysisElement = document.createElement("div");
+        fakeVideoAnalysisElement.id = "fakeVideoAnalysis";
+        urlResults.insertBefore(fakeVideoAnalysisElement, urlResults.firstChild);
+      
+        try {
+          const uploadResponse = await fetch("/upload", {
+            method: "POST",
+            body: formData
+          });
+      
+          if (!uploadResponse.ok) {
+            throw new Error(`HTTP error! status: ${uploadResponse.status}`);
+          }
+      
+          const uploadResult = await uploadResponse.json();
+          progressText.textContent = "Video uploaded successfully. Processing...";
+      
+          // Now process the uploaded video
+          const processResponse = await fetch("/process", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              filename: uploadResult.filename,
+              clipDuration: parseInt(clipDurationFile.value),
+              targetLanguage: document.getElementById("targetLanguage").value
+            })
+          });
+      
+          if (!processResponse.ok) {
+            throw new Error(`HTTP error! status: ${processResponse.status}`);
+          }
+      
+          const reader = processResponse.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let clipCount = 0;
+      
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+      
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+      
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const message = JSON.parse(line);
+                  switch (message.status) {
+                    case "processing":
+                      progressText.textContent = message.message;
+                      // Update progress bar
+                      const progress = (progressBar.style.width.replace("%", "") || 0) * 1 + 5;
+                      progressBar.style.width = `${Math.min(progress, 95)}%`;
+                      break;
+                    case "clip_ready":
+                      clipCount++;
+                      displayClip(message.data.clip, message.data.output_folder, urlResults);
+                      // Update running summary
+                      runningSummaryElement.innerHTML = displayRunningSummary(message.data.running_summary);
+                      progressText.textContent = `Processed ${clipCount} clip(s)`;
+                      break;
+                    case "complete":
+                      progressBar.style.width = "100%";
+                      progressText.textContent = message.message;
+                      // Display final fake video analysis result
+                      if (message.fake_detection_result) {
+                        fakeVideoAnalysisElement.innerHTML = displayFakeVideoAnalysis(message.fake_detection_result);
+                      }
+                      showToast("Processing complete!", "success");
+                      setTimeout(() => {
+                        progressContainer.style.display = "none";
+                      }, 2000);
+                      break;
+                    default:
+                      console.log("Unknown message type:", message);
+                  }
+                } catch (error) {
+                  console.error("Error parsing JSON:", error, "Raw data:", line);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          showToast(`Error: ${error.message}`, "danger");
+          errorDiv.textContent = `Error: ${error.message}`;
+          progressContainer.style.display = "none";
         }
-        processVideo(
-          "/process_url",
-          {
-            url: videoUrl.value,
-            clipDuration: parseInt(clipDurationUrl.value),
-            targetLanguage: document.getElementById("targetLanguage").value,
-          },
-          urlResults
-        );
-      });
+      }
 
-      sideMenuToggle.addEventListener("click", () => {
-        sideMenu.classList.toggle("open");
-      });
+      function addPlaceholder(resultContainer) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "clip-placeholder";
+        placeholder.innerHTML =
+          '<p class="placeholder-text">Processing clip...</p>';
+        resultContainer.appendChild(placeholder);
+        resultContainer.scrollTop = resultContainer.scrollHeight;
+      }
+
+      function replacePlaceholderWithClip(clip, outputFolder, resultContainer) {
+        const placeholder = resultContainer.querySelector(".clip-placeholder");
+        if (placeholder) {
+          const clipElement = createClipElement(clip, outputFolder);
+          resultContainer.replaceChild(clipElement, placeholder);
+        } else {
+          // If no placeholder is available, just append the new clip
+          const clipElement = createClipElement(clip, outputFolder);
+          resultContainer.appendChild(clipElement);
+        }
+        resultContainer.scrollTop = resultContainer.scrollHeight;
+      }
+
+      function updateProjectTitle(summary) {
+        const titleElement = document.querySelector(".project-title h2");
+        if (summary && summary.key_topics && summary.key_topics.length > 0) {
+          const topTopics = summary.key_topics.slice(0, 3).join(", ");
+          titleElement.textContent = `Analyzing: ${topTopics}`;
+        } else {
+          titleElement.textContent =
+            "Multi-Modal Video Analysis and Summarization Platform";
+        }
+      }
+
+      function displayRunningSummary(summary) {
+        updateProjectTitle(summary);
+        return `
+          <div class="running-summary">
+            <h4>Running Summary</h4>
+            <div class="summary-section">
+              <h5>Key Topics:</h5>
+              <ul class="summary-list">
+                ${summary.key_topics
+                  .map((topic) => `<li>${topic}</li>`)
+                  .join("")}
+              </ul>
+            </div>
+            <div class="summary-section">
+              <h5>Main Entities:</h5>
+              <ul class="summary-list">
+                ${summary.main_entities
+                  .map((entity) => `<li>${entity}</li>`)
+                  .join("")}
+              </ul>
+            </div>
+            <div class="summary-section">
+              <h5>Recognized Objects:</h5>
+              <ul class="summary-list">
+                ${summary.recognized_objects
+                  .map((object) => `<li>${object}</li>`)
+                  .join("")}
+              </ul>
+            </div>
+            <div class="important-sentences">
+              <h5>Important Sentences:</h5>
+              <ul>
+                ${summary.important_sentences
+                  .map((sentence) => `<li>"${sentence}"</li>`)
+                  .join("")}
+              </ul>
+              <p class="important-sentences-note">Note: Sentences have been filtered for relevance and coherence.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function createClipElement(clip, outputFolder) {
+        console.log("Creating clip element with summary:", clip.summary);
+        const clipElement = document.createElement("div");
+        clipElement.className = "clip";
+        clipElement.innerHTML = `
+          <h5><b>${clip.clip_name}</b></h5>
+          <div class="video-container">
+            <div class="video-info">
+              <span>Source: ${clip.source_url || "Not available"}</span>
+              <br>
+              <span>Last accessed: ${clip.access_time || "Not available"}</span>
+            </div>
+            <video width="100%" controls>
+              <source src="/output/${outputFolder}/${
+          clip.filename
+        }" type="video/mp4">
+            </video>
+          </div>
+          <p>Start: ${clip.start ? clip.start.toFixed(2) : "N/A"}s | End: ${
+          clip.end ? clip.end.toFixed(2) : "N/A"
+        }s</p>
+          <div>${displaySummary(clip.summary)}</div>
+          <div class="image-recognition-results">
+            <h6>Image Recognition Results:</h6>
+            <p>${displayImageRecognitionResults(clip.image_recognition)}</p>
+          </div>
+          <div class="text-content">
+            <h6>Translation:</h6>
+            <div class="text-content">${
+              clip.translated_text || "Translation not available."
+            }</div>
+            <h6>Speech Recognition:</h6>
+            <div class="text-content">${
+              clip.speech_text || "No speech detected."
+            }</div>
+            <h6>OCR Text:</h6>
+            <div class="text-content">${
+              clip.ocr_text || "No text detected in video."
+            }</div>
+          </div>
+        `;
+        return clipElement;
+      }
+
+      function displayImageRecognitionResults(results) {
+        if (!results || results.length === 0) {
+          return "No objects recognized in the video.";
+        }
+
+        const topResults = results.slice(0, 5); // Display top 5 recognized objects
+        return topResults
+          .map(
+            (result) =>
+              `${result.label} (${(result.confidence * 100).toFixed(2)}%)`
+          )
+          .join(", ");
+      }
+
+      function removePlaceholders(resultContainer) {
+        const placeholders =
+          resultContainer.querySelectorAll(".clip-placeholder");
+        placeholders.forEach((placeholder) => placeholder.remove());
+      }
+
+      function displayClip(clip, outputFolder, resultContainer) {
+        const clipElement = createClipElement(clip, outputFolder);
+        resultContainer.appendChild(clipElement);
+        resultContainer.scrollTop = resultContainer.scrollHeight;
+      }
 
       function updateSavedResultsList() {
         fetch("/list_saved_results")
@@ -353,7 +1020,10 @@
             results.forEach((result) => {
               const resultElement = document.createElement("div");
               resultElement.className = "saved-result-item";
-              resultElement.textContent = result;
+              resultElement.innerHTML = `
+                <span>${result}</span>
+                <span class="delete-btn" onclick="deleteResult('${result}', event)">🗑️</span>
+              `;
               resultElement.addEventListener("click", () => loadResult(result));
               savedResultsList.appendChild(resultElement);
             });
@@ -362,6 +1032,26 @@
             console.error("Error fetching saved results:", error);
             showToast("Error fetching saved results", "danger");
           });
+      }
+
+      function deleteResult(resultName, event) {
+        event.stopPropagation(); // Prevent triggering the loadResult function
+        if (
+          confirm(`Are you sure you want to delete the result "${resultName}"?`)
+        ) {
+          fetch(`/delete_result/${resultName}`, {
+            method: "DELETE",
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              showToast(data.message, "success");
+              updateSavedResultsList();
+            })
+            .catch((error) => {
+              console.error("Error deleting result:", error);
+              showToast("Error deleting result", "danger");
+            });
+        }
       }
 
       function loadResult(resultName) {
@@ -377,8 +1067,7 @@
           });
       }
 
-
-      function saveResult(resultName, currentResult) {   
+      function saveResult(resultName, currentResult) {
         fetch("/save_result", {
           method: "POST",
           headers: {
@@ -395,7 +1084,7 @@
             console.error("Error saving result:", error);
             showToast("Error saving result", "danger");
           });
-         }
+      }
       // Call this function when the page loads to populate the saved results list
       updateSavedResultsList();
     </script>

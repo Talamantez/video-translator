@@ -1,6 +1,8 @@
 import subprocess
 import speech_recognition as sr
 
+from flask import current_app
+
 def extract_audio(video_path, audio_path):
     try:
         result = subprocess.run([
@@ -15,7 +17,7 @@ def extract_audio(video_path, audio_path):
         ], check=True, stderr=subprocess.PIPE)
         return True
     except subprocess.CalledProcessError as e:
-        app.logger.error(f"Error extracting audio: {e.stderr.decode()}")
+        current_app.logger.error(f"Error extracting audio: {e.stderr.decode()}")
         return False
 
 def speech_to_text(audio_path):
@@ -26,9 +28,9 @@ def speech_to_text(audio_path):
         try:
             return recognizer.recognize_google(audio)
         except sr.UnknownValueError:
-            return "Speech recognition could not understand audio"
+            return ""
         except sr.RequestError:
             return "Could not request results from speech recognition service"
     except Exception as e:
-        app.logger.error(f"Error in speech_to_text: {str(e)}")
+        current_app.logger.error(f"Error in speech_to_text: {str(e)}")
         return f"Error processing audio: {str(e)}"

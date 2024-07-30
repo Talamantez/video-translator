@@ -28,11 +28,7 @@ Press CTRL+C to quit
 
  ## Visit templates/index.html at http://127.0.0.1:5000/ in your browser
 
-
- # Searching the Internet Archive for Short Videos
- - To filter out long videos, go to https://archive.org/advancedsearch.php
- - Add a custom field: AND 'samples_only'
- source: https://archive.org/post/1128410/filtering-out-30-second-audio-samples-from-search-results 
-
  ## Example short-ish clips:
-  ~2 min https://ia601307.us.archive.org/16/items/brigitte-bardot-marseillaise-backstage-of-bb-show-67/Brigitte%20Bardot%20-%20Marseillaise%20-%20%20Backstage%20of%20BB%20Show%2067%20.mp4
+ ### Dit was de week
+    - This Dutch news show is 2 minutes and there are tons of episodes on the internet archive
+  https://archive.org/details/2205636-dit-was-de-week
