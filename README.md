@@ -32,3 +32,6 @@ Press CTRL+C to quit
  ### Dit was de week
     - This Dutch news show is 2 minutes and there are tons of episodes on the internet archive
   https://archive.org/details/2205636-dit-was-de-week
+
+  # Test
+  `pytest tests/test_video_processor.py`

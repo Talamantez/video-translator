@@ -10,6 +10,10 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  
     <style>
       h6 {
         font-weight: bold;
@@ -246,28 +250,28 @@
         list-style-type: none;
         padding-left: 0;
       }
-      
+
       .fake-video-info li {
         margin-bottom: 10px;
       }
-      
+
       .fake-video-info li strong {
         display: inline-block;
         width: 200px;
       }
-      
+
       .fake-video-info li:before {
         content: "";
         display: inline-block;
         width: 20px;
         text-align: center;
       }
-      
+
       .fake-video-info li:contains("✓"):before {
         content: "✓";
         color: green;
       }
-      
+
       .fake-video-info li:contains("⚠"):before {
         content: "⚠";
         color: orange;
@@ -287,6 +291,7 @@
         <h1>VideoInsight</h1>
         <h2>Multi-Modal Video Analysis and Summarization Platform</h2>
       </div>
+      <div id="react-root"></div>
       <div class="mb-3 mt-3">
         <label for="targetLanguage" class="form-label"
           >Translate into which language?</label
@@ -325,14 +330,31 @@
       <button id="processUrlBtn" class="btn btn-primary">Process URL</button>
       <div class="mb-3 mt-3">
         <label for="videoFile" class="form-label">Upload Video File</label>
-        <input class="form-control" type="file" id="videoFile" accept="video/*">
-        <small class="form-text text-muted">Supported formats: MP4, WebM, Ogg</small>
+        <input
+          class="form-control"
+          type="file"
+          id="videoFile"
+          accept="video/*"
+        />
+        <small class="form-text text-muted"
+          >Supported formats: MP4, WebM, Ogg</small
+        >
       </div>
       <div class="mb-3">
-        <label for="clipDurationFile" class="form-label">Clip Length for Uploaded Video (seconds)</label>
-        <input type="number" class="form-control" id="clipDurationFile" value="30" min="1">
+        <label for="clipDurationFile" class="form-label"
+          >Clip Length for Uploaded Video (seconds)</label
+        >
+        <input
+          type="number"
+          class="form-control"
+          id="clipDurationFile"
+          value="30"
+          min="1"
+        />
       </div>
-      <button id="processFileBtn" class="btn btn-primary">Process Uploaded Video</button>
+      <button id="processFileBtn" class="btn btn-primary">
+        Process Uploaded Video
+      </button>
       <div id="progressContainer" class="mt-3">
         <div class="progress">
           <div
@@ -417,12 +439,15 @@
           showToast("Please select a video file to upload", "warning");
           return;
         }
-      
+
         const formData = new FormData();
         formData.append("file", file);
         formData.append("clipDuration", clipDurationFile.value);
-        formData.append("targetLanguage", document.getElementById("targetLanguage").value);
-      
+        formData.append(
+          "targetLanguage",
+          document.getElementById("targetLanguage").value
+        );
+
         processVideoFile(formData);
       });
 
@@ -552,7 +577,7 @@
         const badgeText = fakeDetectionResult.potential_manipulation
           ? "Potential Manipulation Detected"
           : "No Manipulation Detected";
-      
+
         let analysisHtml = `
           <div class="fake-video-badge ${badgeClass}">
             ${badgeText}
@@ -561,18 +586,32 @@
             <h5>Detailed Video Analysis Report</h5>
             <p>Our system performed a comprehensive analysis to check for potential video manipulation:</p>
             <ul>
-              <li><strong>Frame Rate Analysis:</strong> ${getAnalysisDetail(fakeDetectionResult, 'frame_rate')}</li>
-              <li><strong>Video Quality Consistency:</strong> ${getAnalysisDetail(fakeDetectionResult, 'quality')}</li>
-              <li><strong>Facial Proportion Changes:</strong> ${getAnalysisDetail(fakeDetectionResult, 'facial_proportions')}</li>
-              <li><strong>Color Distribution Analysis:</strong> ${getAnalysisDetail(fakeDetectionResult, 'color_distribution')}</li>
+              <li><strong>Frame Rate Analysis:</strong> ${getAnalysisDetail(
+                fakeDetectionResult,
+                "frame_rate"
+              )}</li>
+              <li><strong>Video Quality Consistency:</strong> ${getAnalysisDetail(
+                fakeDetectionResult,
+                "quality"
+              )}</li>
+              <li><strong>Facial Proportion Changes:</strong> ${getAnalysisDetail(
+                fakeDetectionResult,
+                "facial_proportions"
+              )}</li>
+              <li><strong>Color Distribution Analysis:</strong> ${getAnalysisDetail(
+                fakeDetectionResult,
+                "color_distribution"
+              )}</li>
             </ul>
         `;
-      
+
         if (fakeDetectionResult.potential_manipulation) {
           analysisHtml += `
             <p><strong>Potential issues detected:</strong></p>
             <ul>
-              ${fakeDetectionResult.reasons.map(reason => `<li>${reason}</li>`).join('')}
+              ${fakeDetectionResult.reasons
+                .map((reason) => `<li>${reason}</li>`)
+                .join("")}
             </ul>
             <p>These findings suggest that the video may have been altered. However, please note that some legitimate editing techniques or unique filming conditions can occasionally trigger these alerts.</p>
           `;
@@ -581,23 +620,27 @@
             <p><strong>Analysis Conclusion:</strong> Our comprehensive checks did not detect any clear signs of manipulation in this video. The content appears to be consistent with typical unaltered footage.</p>
           `;
         }
-      
+
         analysisHtml += `
           <p><strong>Note:</strong> While our analysis is thorough, it's not infallible. Always consider the context of the video and use critical thinking when evaluating its authenticity. If you have concerns about the content, we recommend seeking additional verification from trusted sources.</p>
         </div>
         `;
-      
+
         return analysisHtml;
       }
-      
+
       function getAnalysisDetail(result, check) {
         const details = {
-          frame_rate: "We examined the consistency of frame rates throughout the video.",
-          quality: "We looked for unexpected changes in video quality or resolution.",
-          facial_proportions: "We analyzed facial features for unnatural changes or distortions.",
-          color_distribution: "We checked for unusual shifts in color patterns or lighting."
+          frame_rate:
+            "We examined the consistency of frame rates throughout the video.",
+          quality:
+            "We looked for unexpected changes in video quality or resolution.",
+          facial_proportions:
+            "We analyzed facial features for unnatural changes or distortions.",
+          color_distribution:
+            "We checked for unusual shifts in color patterns or lighting.",
         };
-      
+
         let status = result[check] ? "✓ Passed" : "⚠ Flagged";
         return `${status} - ${details[check]}`;
       }
@@ -761,35 +804,39 @@
         const progressContainer = document.getElementById("progressContainer");
         const progressBar = document.getElementById("progressBar");
         const progressText = document.getElementById("progressText");
-      
+
         progressContainer.style.display = "block";
         progressBar.style.width = "0%";
         progressText.textContent = "Uploading video...";
-      
+
         // Clear previous results
         urlResults.innerHTML = "";
-      
+
         let runningSummaryElement = document.createElement("div");
         runningSummaryElement.id = "runningSummary";
         urlResults.insertBefore(runningSummaryElement, urlResults.firstChild);
-      
+
         let fakeVideoAnalysisElement = document.createElement("div");
         fakeVideoAnalysisElement.id = "fakeVideoAnalysis";
-        urlResults.insertBefore(fakeVideoAnalysisElement, urlResults.firstChild);
-      
+        urlResults.insertBefore(
+          fakeVideoAnalysisElement,
+          urlResults.firstChild
+        );
+
         try {
           const uploadResponse = await fetch("/upload", {
             method: "POST",
-            body: formData
+            body: formData,
           });
-      
+
           if (!uploadResponse.ok) {
             throw new Error(`HTTP error! status: ${uploadResponse.status}`);
           }
-      
+
           const uploadResult = await uploadResponse.json();
-          progressText.textContent = "Video uploaded successfully. Processing...";
-      
+          progressText.textContent =
+            "Video uploaded successfully. Processing...";
+
           // Now process the uploaded video
           const processResponse = await fetch("/process", {
             method: "POST",
@@ -799,27 +846,27 @@
             body: JSON.stringify({
               filename: uploadResult.filename,
               clipDuration: parseInt(clipDurationFile.value),
-              targetLanguage: document.getElementById("targetLanguage").value
-            })
+              targetLanguage: document.getElementById("targetLanguage").value,
+            }),
           });
-      
+
           if (!processResponse.ok) {
             throw new Error(`HTTP error! status: ${processResponse.status}`);
           }
-      
+
           const reader = processResponse.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
           let clipCount = 0;
-      
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-      
+
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n");
             buffer = lines.pop();
-      
+
             for (const line of lines) {
               if (line.trim()) {
                 try {
@@ -828,14 +875,21 @@
                     case "processing":
                       progressText.textContent = message.message;
                       // Update progress bar
-                      const progress = (progressBar.style.width.replace("%", "") || 0) * 1 + 5;
+                      const progress =
+                        (progressBar.style.width.replace("%", "") || 0) * 1 + 5;
                       progressBar.style.width = `${Math.min(progress, 95)}%`;
                       break;
                     case "clip_ready":
                       clipCount++;
-                      displayClip(message.data.clip, message.data.output_folder, urlResults);
+                      displayClip(
+                        message.data.clip,
+                        message.data.output_folder,
+                        urlResults
+                      );
                       // Update running summary
-                      runningSummaryElement.innerHTML = displayRunningSummary(message.data.running_summary);
+                      runningSummaryElement.innerHTML = displayRunningSummary(
+                        message.data.running_summary
+                      );
                       progressText.textContent = `Processed ${clipCount} clip(s)`;
                       break;
                     case "complete":
@@ -843,7 +897,10 @@
                       progressText.textContent = message.message;
                       // Display final fake video analysis result
                       if (message.fake_detection_result) {
-                        fakeVideoAnalysisElement.innerHTML = displayFakeVideoAnalysis(message.fake_detection_result);
+                        fakeVideoAnalysisElement.innerHTML =
+                          displayFakeVideoAnalysis(
+                            message.fake_detection_result
+                          );
                       }
                       showToast("Processing complete!", "success");
                       setTimeout(() => {
@@ -854,7 +911,12 @@
                       console.log("Unknown message type:", message);
                   }
                 } catch (error) {
-                  console.error("Error parsing JSON:", error, "Raw data:", line);
+                  console.error(
+                    "Error parsing JSON:",
+                    error,
+                    "Raw data:",
+                    line
+                  );
                 }
               }
             }
@@ -865,6 +927,44 @@
           errorDiv.textContent = `Error: ${error.message}`;
           progressContainer.style.display = "none";
         }
+      }
+
+      function handleStreamedData(data, resultContainer) {
+        switch (data.status) {
+          case "started":
+            console.log(data.message);
+            break;
+          case "processing":
+            updateProgressBar(data.message);
+            break;
+          case "clip_ready":
+            displayClip(
+              data.data.clip,
+              data.data.output_folder,
+              resultContainer
+            );
+            updateRunningSummary(data.data.running_summary);
+            break;
+          case "complete":
+            console.log(data.message);
+            displayFakeVideoAnalysis(data.fake_detection_result);
+            hideProgressBar();
+            break;
+          case "error":
+            console.error(data.message);
+            showErrorMessage(data.message);
+            hideProgressBar();
+            break;
+          default:
+            console.log("Unknown message type:", data);
+        }
+      }
+
+      function showErrorMessage(message) {
+        // Display error message to the user
+        const errorDiv = document.getElementById("error");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
       }
 
       function addPlaceholder(resultContainer) {
@@ -1087,6 +1187,9 @@
       }
       // Call this function when the page loads to populate the saved results list
       updateSavedResultsList();
+    </script>
+    <script type="text/babel">
+      ReactDOM.render(<Dashboard />, document.getElementById('react-root'));
     </script>
   </body>
 </html>

@@ -26,12 +26,12 @@ from threading import Lock
 from langdetect import detect
 from summa import keywords, summarizer
 import re
-import cv2
-import ffmpeg
-import yt_dlp
 import subprocess
+import logging
+
 from fractions import Fraction
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Load spaCy models for different languages
 nlp_en = spacy.load("en_core_web_sm")
@@ -388,56 +388,104 @@ def get_video_info(input_file):
         '-of', 'csv=p=0',
         input_file
     ]
-    ffprobe_output = subprocess.check_output(ffprobe_cmd).decode('utf-8').strip().split(',')
-    
-    # Handle different possible outputs
-    if '/' in ffprobe_output[0]:  # If first value is frame rate
+    try:
+        ffprobe_output = subprocess.check_output(ffprobe_cmd, stderr=subprocess.STDOUT).decode('utf-8').strip().split(',')
+        logging.info(f"ffprobe output: {ffprobe_output}")
+        
+        if len(ffprobe_output) < 3:
+            raise ValueError(f"Unexpected ffprobe output format: {ffprobe_output}")
+        
+        # Handle frame rate
         fps = float(Fraction(ffprobe_output[0]))
-        duration = float(ffprobe_output[1])
-        nb_packets = None
-    else:  # If first value is packet count
-        nb_packets = int(ffprobe_output[0])
-        fps = float(Fraction(ffprobe_output[1]))
-        duration = float(ffprobe_output[2])
+        
+        # Handle packet count or duration (depending on ffprobe version)
+        try:
+            nb_packets = int(float(ffprobe_output[1])) if ffprobe_output[1] != 'N/A' else None
+        except ValueError:
+            nb_packets = None
+        
+        # Handle duration
+        try:
+            duration = float(ffprobe_output[2]) if ffprobe_output[2] != 'N/A' else None
+        except ValueError:
+            duration = None
+        
+        # Estimate total frames
+        if nb_packets is not None:
+            total_frames = nb_packets
+        elif duration is not None:
+            total_frames = int(duration * fps)
+        else:
+            # If we don't have duration or packet count, we need an alternative method
+            logging.warning("Unable to determine total frames from ffprobe output. Using ffmpeg to count frames.")
+            total_frames = count_frames_ffmpeg(input_file)
+        
+        logging.info(f"Video info: Total frames: {total_frames}, FPS: {fps}, Duration: {duration}")
+        
+        return total_frames, fps, duration
     
-    # Estimate total frames
-    if nb_packets:
-        total_frames = nb_packets
-    else:
-        total_frames = int(duration * fps)
-    
-    print(f"ffprobe output: {ffprobe_output}")
-    print(f"Total frames: {total_frames}, FPS: {fps}, Duration: {duration}")
-    
-    return total_frames, fps, duration
+    except subprocess.CalledProcessError as e:
+        logging.error(f"ffprobe command failed: {e.output.decode('utf-8')}")
+        raise
+    except ValueError as e:
+        logging.error(f"Error parsing ffprobe output: {str(e)}")
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error in get_video_info: {str(e)}")
+        raise
+
+def count_frames_ffmpeg(input_file):
+    cmd = [
+        'ffmpeg',
+        '-i', input_file,
+        '-map', '0:v:0',
+        '-c', 'copy',
+        '-f', 'null',
+        '-'
+    ]
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode()
+        matches = re.search(r'frame=\s*(\d+)', output)
+        if matches:
+            return int(matches.group(1))
+        else:
+            raise ValueError("Could not find frame count in ffmpeg output")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error running ffmpeg: {e.output.decode('utf-8')}")
+        raise
 
 def process_video_file_generator(input_file, output_folder, clip_duration):
-    total_frames, fps, duration = get_video_info(input_file)
+    try:
+        total_frames, fps, duration = get_video_info(input_file)
+        
+        for i in range(0, total_frames, int(fps * clip_duration)):
+            start_time = i / fps
+            end_time = min((i + int(fps * clip_duration)) / fps, duration) if duration else (i + int(fps * clip_duration)) / fps
+            
+            clip_filename = f"clip_{i//int(fps * clip_duration):04d}.mp4"
+            clip_path = os.path.join(output_folder, clip_filename)
+            
+            # Use ffmpeg to cut the clip
+            ffmpeg_cmd = [
+                'ffmpeg',
+                '-i', input_file,
+                '-ss', str(start_time),
+                '-t', str(end_time - start_time),
+                '-c', 'copy',  # This copies the codec without re-encoding, which is faster
+                '-y',  # Overwrite output file if it exists
+                clip_path
+            ]
+            subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            yield {
+                "filename": clip_filename,
+                "start": start_time,
+                "end": end_time
+            }
     
-    for i in range(0, total_frames, int(fps * clip_duration)):
-        start_time = i / fps
-        end_time = min((i + int(fps * clip_duration)) / fps, duration)
-        
-        clip_filename = f"clip_{i//int(fps * clip_duration):04d}.mp4"
-        clip_path = os.path.join(output_folder, clip_filename)
-        
-        # Use ffmpeg to cut the clip
-        ffmpeg_cmd = [
-            'ffmpeg',
-            '-i', input_file,
-            '-ss', str(start_time),
-            '-t', str(end_time - start_time),
-            '-c', 'copy',  # This copies the codec without re-encoding, which is faster
-            '-y',  # Overwrite output file if it exists
-            clip_path
-        ]
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        yield {
-            "filename": clip_filename,
-            "start": start_time,
-            "end": end_time
-        }
+    except Exception as e:
+        logging.error(f"Error in process_video_file_generator: {str(e)}")
+        raise
 
 def process_clip(clip, output_folder, target_language, url):
     clip_path = os.path.join(output_folder, clip["filename"])
@@ -479,8 +527,6 @@ def process_clip(clip, output_folder, target_language, url):
         "access_time": datetime.now().isoformat(),
     }
 
-@main.route("/process", methods=["POST"])
-def process_video():
     data = request.json
     filename = data.get("filename")
     url = data.get("url")
@@ -598,6 +644,71 @@ def process_video():
         current_app.logger.error(f"Error processing video: {str(e)}")
         return jsonify({"error": f"Error processing video: {str(e)}"}), 500
 
+@main.route("/process", methods=["POST"])
+def process_video():
+    try:
+        data = request.json
+        filename = data.get("filename")
+        url = data.get("url")
+        clip_duration = data["clipDuration"]
+        target_language = data.get("targetLanguage", "en")
+
+        logging.info(f"Processing video: filename={filename}, url={url}, clip_duration={clip_duration}, target_language={target_language}")
+
+        if filename:
+            input_file = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+        elif url:
+            input_file = download_video(url)
+        else:
+            return jsonify({"error": "No filename or URL provided"}), 400
+
+        if not os.path.exists(input_file):
+            return jsonify({"error": "Input file not found"}), 404
+
+        output_folder = os.path.join(current_app.config["OUTPUT_FOLDER"], os.path.splitext(os.path.basename(input_file))[0])
+        os.makedirs(output_folder, exist_ok=True)
+
+        def generate():
+            try:
+                yield json.dumps({"status": "started", "message": "Processing started"}) + "\n"
+
+                clip_generator = process_video_file_generator(input_file, output_folder, clip_duration)
+                running_summary = {}
+
+                for i, clip in enumerate(clip_generator):
+                    logging.info(f"Processing clip {i+1}: {clip}")
+                    yield json.dumps({"status": "processing", "message": f"Processing clip {i+1}"}) + "\n"
+                    
+                    clip_result = process_clip(clip, output_folder, target_language, url or filename)
+                    
+                    running_summary = update_running_summary(running_summary, clip_result)
+                    
+                    yield json.dumps({
+                        "status": "clip_ready",
+                        "data": {
+                            "clip": clip_result,
+                            "output_folder": os.path.basename(output_folder),
+                            "running_summary": running_summary,
+                        },
+                    }) + "\n"
+
+                fake_detection_result = detect_fake_video(input_file)
+                
+                yield json.dumps({
+                    "status": "complete",
+                    "message": "Processing complete",
+                    "fake_detection_result": fake_detection_result,
+                }) + "\n"
+            
+            except Exception as e:
+                logging.error(f"Error in generate function: {str(e)}", exc_info=True)
+                yield json.dumps({"status": "error", "message": f"Error during processing: {str(e)}"}) + "\n"
+
+        return Response(stream_with_context(generate()), content_type="application/json")
+
+    except Exception as e:
+        logging.error(f"Error in process_video route: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Error processing video: {str(e)}"}), 500
 
 @main.route("/process_folder", methods=["POST"])
 def process_folder():
