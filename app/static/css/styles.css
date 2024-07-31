@@ -25,9 +25,10 @@ h6 {
   gap: 20px;
 }
 .clip {
+  margin-bottom: 20px;
   border: 1px solid #ddd;
-  border-radius: 5px;
   padding: 15px;
+  border-radius: 5px;
 }
 .side-menu {
   position: fixed;
@@ -99,6 +100,10 @@ h6 {
   margin-bottom: 20px;
   background-color: #fff;
 }
+.content-section {
+  margin-top: 15px;
+}
+
 /* New styles for the summary column */
 .content-wrapper {
   display: flex;
@@ -141,7 +146,14 @@ h6 {
   width: 100%;
 }
 .text-content {
-  margin-top: 20px;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+.translated-content {
+  background-color: #e9ecef;
+  border-left: 3px solid #007bff;
 }
 .image-recognition-results {
   margin-top: 10px;

@@ -583,12 +583,14 @@ def process_clip(clip, output_folder, target_language, url):
     image_recognition_results = recognize_images_in_video(clip_path)
     logging.info(f"Image recognition results: {image_recognition_results[:3]}...")
 
+    # Translate speech and OCR text separately
+    speech_translated = translate_text(speech_text, target_language) if speech_text else "No speech to translate."
+    ocr_translated = translate_text(ocr_text, target_language) if ocr_text else "No OCR text to translate."
+
     combined_text = f"{speech_text} {ocr_text}".strip()
     if combined_text:
-        translated_text = translate_text(combined_text, target_language)
-        summary = extract_meaningful_content(combined_text, translated_text, target_language)
+        summary = extract_meaningful_content(combined_text, f"{speech_translated} {ocr_translated}", target_language)
     else:
-        translated_text = "No text to translate."
         summary = {"error": "No meaningful content found"}
     logging.info(f"Translation and summary complete")
 
@@ -604,7 +606,8 @@ def process_clip(clip, output_folder, target_language, url):
         "clip_name": clip_name,
         "speech_text": speech_text,
         "ocr_text": ocr_text,
-        "translated_text": translated_text,
+        "speech_translated": speech_translated,
+        "ocr_translated": ocr_translated,
         "summary": summary,
         "image_recognition": image_recognition_results,
         "source_url": url,

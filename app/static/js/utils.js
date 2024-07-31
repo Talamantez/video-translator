@@ -44,14 +44,30 @@ function displayClips(clips, outputFolder, resultContainer) {
           <video width="20%" controls>
             <source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">
           </video>
-          <h6>Speech Recognition:</h6>
-          <div class="text-content">${
+          <div class="content-section">
+            <h6>Speech Recognition:</h6>
+            <div class="text-content">${
         clip.speech_text || "No speech detected."
       }</div>
-          <h6>OCR Text:</h6>
-          <div>${clip.ocr_text || "No text detected in video."}</div>
-          <h6>Translation:</h6>
-          <div>${clip.translated_text || "Translation not available."}</div>
+            <h6>Speech Translation:</h6>
+            <div class="text-content translated-content">${
+        clip.speech_translated || "No speech translation available."
+      }</div>
+          </div>
+          <div class="content-section">
+            <h6>OCR Text:</h6>
+            <div class="text-content">${
+        clip.ocr_text || "No text detected in video."
+      }</div>
+            <h6>OCR Translation:</h6>
+            <div class="text-content translated-content">${
+        clip.ocr_translated || "No OCR translation available."
+      }</div>
+          </div>
+          <div class="content-section">
+            <h6>Image Recognition Results:</h6>
+            <p>${displayImageRecognitionResults(clip.image_recognition)}</p>
+          </div>
         `;
       clipContainer.appendChild(clipElement);
     });
@@ -326,23 +342,27 @@ function createClipElement(clip, outputFolder) {
       <p>Start: ${clip.start ? clip.start.toFixed(2) : "N/A"}s | End: ${
     clip.end ? clip.end.toFixed(2) : "N/A"
   }s</p>
+            <h6>Speech Recognition:</h6>
+        <div class="text-content">${
+    clip.speech_text || "No speech detected."
+  }</div>
+          <h6>Speech Translation:</h6>
+        <div class="text-content translated-content">${
+    clip.speech_translated || "No speech translation available."
+  }</div>
+          <h6>OCR Text:</h6>
+        <div class="text-content">${
+    clip.ocr_text || "No text detected in video."
+  }</div>
+        <h6>OCR Translation:</h6>
+        <div class="text-content translated-content">${
+    clip.ocr_translated || "No OCR translation available."
+  }</div>
       <div>${displaySummary(clip.summary)}</div>
       <div class="image-recognition-results">
         <h6>Image Recognition Results:</h6>
         <p>${displayImageRecognitionResults(clip.image_recognition)}</p>
       </div>
-        <h6>Translation:</h6>
-        <div class="text-content">${
-    clip.translated_text || "Translation not available."
-  }</div>
-        <h6>Speech Recognition:</h6>
-        <div class="text-content">${
-    clip.speech_text || "No speech detected."
-  }</div>
-        <h6>OCR Text:</h6>
-        <div class="text-content">${
-    clip.ocr_text || "No text detected in video."
-  }</div>
     `;
   return clipElement;
 }
