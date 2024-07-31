@@ -1,7 +1,7 @@
 import os
 import yt_dlp
 from moviepy.editor import VideoFileClip
-
+import logging
 
 def process_video_file(input_file, output_folder, clip_duration=10):
     clip = VideoFileClip(input_file)
@@ -12,7 +12,6 @@ def process_video_file(input_file, output_folder, clip_duration=10):
 
     num_clips = int(total_duration // clip_duration) + 1
     clips = []
-
     for i in range(num_clips):
         start_time = i * clip_duration
         end_time = min((i + 1) * clip_duration, total_duration)

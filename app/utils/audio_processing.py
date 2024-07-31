@@ -3,23 +3,37 @@ import speech_recognition as sr
 
 from flask import current_app
 
+import logging
+
 def extract_audio(video_path, audio_path):
     try:
-        result = subprocess.run([
+        command = [
             'ffmpeg',
             '-i', video_path,
-            '-vn',  # No video
+            '-vn',  # Disable video
             '-acodec', 'pcm_s16le',  # Audio codec
-            '-ar', '44100',  # Audio sample rate
-            '-ac', '2',  # Audio channels
-            '-f', 'wav',  # Force WAV format
+            '-ar', '44100',  # Audio sampling rate
+            '-ac', '2',  # Number of audio channels
+            '-y',  # Overwrite output file if it exists
             audio_path
-        ], check=True, stderr=subprocess.PIPE)
-        return True
+        ]
+        
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        
+        if result.returncode == 0:
+            logging.info(f"Audio extracted successfully: {audio_path}")
+            return True
+        else:
+            logging.error(f"Error extracting audio: {result.stderr}")
+            return False
+    
     except subprocess.CalledProcessError as e:
-        current_app.logger.error(f"Error extracting audio: {e.stderr.decode()}")
+        logging.error(f"FFmpeg error: {e.stderr}")
         return False
-
+    except Exception as e:
+        logging.error(f"Unexpected error in audio extraction: {str(e)}")
+        return False
+    
 def speech_to_text(audio_path):
     recognizer = sr.Recognizer()
     try:

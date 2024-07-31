@@ -1,0 +1,261 @@
+h6 {
+  font-weight: bold;
+}
+.text-content {
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.error-message {
+  color: red;
+  font-weight: bold;
+}
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.accordion-button:not(.collapsed) {
+  background-color: #e7f1ff;
+}
+.clip-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.clip {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+}
+.side-menu {
+  position: fixed;
+  right: -700px;
+  width: 700px;
+  height: 100%;
+  background-color: #f8f9fa;
+  transition: right 0.3s ease-in-out;
+  padding: 20px;
+  margin-top: 40px;
+  overflow-y: auto;
+}
+.side-menu.open {
+  right: 0;
+}
+.side-menu-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+.saved-result-item {
+  cursor: pointer;
+  padding: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+.saved-result-item:hover {
+  background-color: #e9ecef;
+}
+#progressContainer {
+  display: none;
+  margin-top: 20px;
+}
+#progressBar {
+  height: 20px;
+}
+#progressText {
+  margin-top: 10px;
+  font-style: italic;
+}
+.clip-placeholder {
+  border: 2px dashed #ccc;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: #f8f9fa;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+.placeholder-text {
+  color: #6c757d;
+  text-align: center;
+  font-style: italic;
+}
+.clip {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: #fff;
+}
+/* New styles for the summary column */
+.content-wrapper {
+  display: flex;
+  width: 100%;
+}
+.summary-column {
+  width: 30%;
+  padding: 15px;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+  max-height: 600px;
+}
+.video-column {
+  width: 70%;
+  padding: 15px;
+}
+.summary-item {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+.video-heading {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.video-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+.video-info {
+  margin-bottom: 10px;
+  font-style: italic;
+  color: #666;
+}
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.text-content {
+  margin-top: 20px;
+}
+.image-recognition-results {
+  margin-top: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+}
+.project-title {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.project-title h1 {
+  font-size: 2.5rem;
+  color: #007bff;
+}
+.project-title h2 {
+  font-size: 1.5rem;
+  color: #6c757d;
+  font-weight: normal;
+}
+.running-summary {
+  background-color: #e9ecef;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+}
+.running-summary h4 {
+  margin-top: 0;
+}
+.summary-section {
+  margin-bottom: 10px;
+}
+.summary-section h5 {
+  margin-bottom: 5px;
+}
+.summary-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+.summary-list li {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 2px 8px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.important-sentences {
+  margin-top: 15px;
+}
+.important-sentences ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+.important-sentences li {
+  background-color: #f8f9fa;
+  border-left: 3px solid #007bff;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.fake-video-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+.fake-video-badge.pass {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+.fake-video-badge.alert {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+.fake-video-info {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  font-size: 0.9em;
+}
+.fake-video-info ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.fake-video-info li {
+  margin-bottom: 10px;
+}
+
+.fake-video-info li strong {
+  display: inline-block;
+  width: 200px;
+}
+
+.fake-video-info li:before {
+  content: "";
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+
+.fake-video-info li:contains("✓"):before {
+  content: "✓";
+  color: green;
+}
+
+.fake-video-info li:contains("⚠"):before {
+  content: "⚠";
+  color: orange;
+}

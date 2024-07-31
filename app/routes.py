@@ -1,4 +1,7 @@
-import threading
+import os
+import logging
+import json
+import uuid
 from flask import (
     Blueprint,
     Response,
@@ -9,15 +12,12 @@ from flask import (
     send_from_directory,
     current_app,
 )
-from app.utils.video_processing import download_video, process_video_file
+from app.utils.video_processing import download_video
 from app.utils.audio_processing import extract_audio, speech_to_text
 from app.utils.text_processing import ocr_from_video, translate_text
 from app.utils.file_handling import allowed_file, get_video_duration
 from app.utils.image_processing import recognize_images_in_video
 from app.utils.fake_video_detection import detect_fake_video
-import os
-import uuid
-import json
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import spacy
@@ -27,11 +27,13 @@ from langdetect import detect
 from summa import keywords, summarizer
 import re
 import subprocess
-import logging
+
 
 from fractions import Fraction
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+
 
 # Load spaCy models for different languages
 nlp_en = spacy.load("en_core_web_sm")
@@ -300,12 +302,77 @@ def update_running_summary(current_summary, new_clip_data):
 
     return current_summary
 
+def get_video_duration(filename):
+    try:
+        result = subprocess.run(['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filename],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        data = json.loads(result.stdout)
+       
+        # Try to get duration from format
+        if 'format' in data and 'duration' in data['format']:
+            return float(data['format']['duration'])
+       
+        # If not in format, try to get from streams
+        if 'streams' in data:
+            for stream in data['streams']:
+                if 'duration' in stream:
+                    return float(stream['duration'])
+       
+        # If we still can't find duration, try to calculate from frames
+        if 'streams' in data:
+            for stream in data['streams']:
+                if stream.get('codec_type') == 'video':
+                    if 'nb_frames' in stream and 'avg_frame_rate' in stream:
+                        nb_frames = int(stream['nb_frames'])
+                        fps = eval(stream['avg_frame_rate'])
+                        if fps != 0:
+                            return nb_frames / fps
+       
+        # If all else fails, return 0
+        return 0
+    except Exception as e:
+        logging.error(f"Error getting video duration: {str(e)}")
+        return 0
+
+def split_video(input_file, output_folder, clip_duration=30):
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    total_duration = get_video_duration(input_file)
+    if total_duration == 0:
+        logging.error(f"Could not determine duration of {input_file}")
+        return []
+    num_clips = int(total_duration // clip_duration) + 1
+    clips = []
+    for i in range(num_clips):
+        start_time = i * clip_duration
+        end_time = min((i + 1) * clip_duration, total_duration)
+        output_file = os.path.join(output_folder, f"clip_{i+1:03d}.mp4")
+       
+        try:
+            subprocess.run([
+                'ffmpeg',
+                '-i', input_file,
+                '-ss', str(start_time),
+                '-to', str(end_time),
+                '-c', 'copy',
+                '-y',
+                output_file
+            ], check=True, stderr=subprocess.PIPE)
+            clips.append({
+                'filename': f"clip_{i+1:03d}.mp4",
+                'start': start_time,
+                'end': end_time
+            })
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Error processing clip {i+1}: {e.stderr.decode()}")
+    return clips
+
 @main.route("/process_url", methods=["POST"])
 def process_url():
     try:
         data = request.json
         url = data["url"]
-        clip_duration = data.get("clipDuration")
+        clip_duration = data.get("clipDuration", 30)  # Default to 30 seconds if not provided
         if clip_duration is not None:
             try:
                 clip_duration = float(clip_duration)
@@ -322,60 +389,62 @@ def process_url():
             os.makedirs(output_folder, exist_ok=True)
 
             temp_file = os.path.join(output_folder, "temp_video.mp4")
+            
             yield json.dumps({"status": "downloading", "message": "Downloading video"}) + "\n"
             download_video(url, temp_file)
 
             if not os.path.exists(temp_file):
                 raise FileNotFoundError(f"Failed to download video: {temp_file}")
 
-            # Start fake video detection in a separate thread
-            fake_detection_thread = threading.Thread(target=perform_fake_video_detection, args=(temp_file, output_folder))
-            fake_detection_thread.start()
-
-            yield json.dumps({"status": "processing", "message": "Video downloaded, processing clips"}) + "\n"
+            yield json.dumps({"status": "splitting", "message": "Splitting video into clips"}) + "\n"
             
-            clip_generator = process_video_file_generator(temp_file, output_folder, clip_duration)
+            try:
+                clips = split_video(temp_file, output_folder, clip_duration)
+                yield json.dumps({"status": "processing", "message": f"Video split into {len(clips)} clips. Starting processing."}) + "\n"
 
-            running_summary = {}
+                running_summary = {}
+                
+                for i, clip in enumerate(clips):
+                    logging.info(f"Processing clip {i+1}/{len(clips)}: {clip}")
+                    yield json.dumps({"status": "processing", "message": f"Processing clip {i+1}/{len(clips)}"}) + "\n"
+                    
+                    try:
+                        # Process the clip
+                        clip_result = process_clip(clip, output_folder, target_language, url)
+                        
+                        # Update running summary
+                        running_summary = update_running_summary(running_summary, clip_result)
+                        
+                        yield json.dumps({
+                            "status": "clip_ready",
+                            "data": {
+                                "clip": clip_result,
+                                "output_folder": os.path.basename(output_folder),
+                                "running_summary": running_summary,
+                            },
+                        }) + "\n"
+                    except Exception as clip_error:
+                        logging.error(f"Error processing clip {i+1}: {str(clip_error)}", exc_info=True)
+                        yield json.dumps({"status": "error", "message": f"Error processing clip {i+1}: {str(clip_error)}"}) + "\n"
 
-            for i, clip in enumerate(clip_generator):
-                yield json.dumps({"status": "processing", "message": f"Processing clip {i+1}"}) + "\n"
-                
-                # Process the clip
-                clip_result = process_clip(clip, output_folder, target_language, url)
-                
-                # Update running summary
-                running_summary = update_running_summary(running_summary, clip_result)
-                
+                logging.info(f"Finished processing {len(clips)} clips")
                 yield json.dumps({
-                    "status": "clip_ready",
-                    "data": {
-                        "clip": clip_result,
-                        "output_folder": os.path.basename(output_folder),
-                        "running_summary": running_summary,
-                    },
+                    "status": "complete",
+                    "message": f"Processing complete. Processed {len(clips)} clips.",
                 }) + "\n"
-
-            if os.path.exists(temp_file):
-                os.remove(temp_file)  # Clean up the temporary video file
-
-            # Wait for fake video detection to complete
-            fake_detection_thread.join()
-
-            # Read the fake detection result
-            with open(os.path.join(output_folder, "fake_detection_result.json"), "r") as f:
-                fake_detection_result = json.load(f)
-
-            yield json.dumps({
-                "status": "complete",
-                "message": "Processing complete",
-                "fake_detection_result": fake_detection_result,
-            }) + "\n"
+            except Exception as e:
+                logging.error(f"Error in clip processing loop: {str(e)}", exc_info=True)
+                yield json.dumps({"status": "error", "message": f"Error during clip processing: {str(e)}"}) + "\n"
+            finally:
+                # Clean up the temporary file after all processing is done
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logging.info(f"Removed temporary file: {temp_file}")
 
         return Response(stream_with_context(generate()), content_type="application/json")
 
     except Exception as e:
-        current_app.logger.error(f"Error processing URL: {str(e)}")
+        logging.error(f"Error in process_url route: {str(e)}", exc_info=True)
         return jsonify({"error": f"Error processing URL: {str(e)}"}), 500
 
 def get_video_info(input_file):
@@ -455,8 +524,10 @@ def count_frames_ffmpeg(input_file):
         raise
 
 def process_video_file_generator(input_file, output_folder, clip_duration):
+    logging.info(f"Starting video file processing: input_file={input_file}, output_folder={output_folder}, clip_duration={clip_duration}")
     try:
         total_frames, fps, duration = get_video_info(input_file)
+        logging.info(f"Video info: total_frames={total_frames}, fps={fps}, duration={duration}")
         
         for i in range(0, total_frames, int(fps * clip_duration)):
             start_time = i / fps
@@ -475,32 +546,42 @@ def process_video_file_generator(input_file, output_folder, clip_duration):
                 '-y',  # Overwrite output file if it exists
                 clip_path
             ]
+            logging.info(f"Running ffmpeg command: {' '.join(ffmpeg_cmd)}")
             subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
-            yield {
-                "filename": clip_filename,
-                "start": start_time,
-                "end": end_time
-            }
+            if os.path.exists(clip_path):
+                logging.info(f"Successfully created clip: {clip_path}")
+                yield {
+                    "filename": clip_filename,
+                    "start": start_time,
+                    "end": end_time
+                }
+            else:
+                logging.error(f"Failed to create clip: {clip_path}")
     
     except Exception as e:
-        logging.error(f"Error in process_video_file_generator: {str(e)}")
+        logging.error(f"Error in process_video_file_generator: {str(e)}", exc_info=True)
         raise
 
 def process_clip(clip, output_folder, target_language, url):
+    logging.info(f"Processing clip: {clip}")
     clip_path = os.path.join(output_folder, clip["filename"])
     audio_path = os.path.join(output_folder, f"{clip['filename']}.wav")
 
     audio_extracted = extract_audio(clip_path, audio_path)
+    logging.info(f"Audio extracted: {audio_extracted}")
 
     if audio_extracted:
         speech_text = speech_to_text(audio_path)
     else:
         speech_text = "Audio extraction failed. No speech recognition performed."
+    logging.info(f"Speech text: {speech_text[:100]}...")
 
     ocr_text = ocr_from_video(clip_path)
+    logging.info(f"OCR text: {ocr_text[:100]}...")
 
     image_recognition_results = recognize_images_in_video(clip_path)
+    logging.info(f"Image recognition results: {image_recognition_results[:3]}...")
 
     combined_text = f"{speech_text} {ocr_text}".strip()
     if combined_text:
@@ -509,11 +590,14 @@ def process_clip(clip, output_folder, target_language, url):
     else:
         translated_text = "No text to translate."
         summary = {"error": "No meaningful content found"}
+    logging.info(f"Translation and summary complete")
 
     clip_name = generate_clip_name(speech_text, ocr_text, image_recognition_results)
+    logging.info(f"Generated clip name: {clip_name}")
 
     if os.path.exists(audio_path):
         os.remove(audio_path)  # Clean up temporary audio file
+        logging.info(f"Removed temporary audio file: {audio_path}")
 
     return {
         **clip,
@@ -526,123 +610,6 @@ def process_clip(clip, output_folder, target_language, url):
         "source_url": url,
         "access_time": datetime.now().isoformat(),
     }
-
-    data = request.json
-    filename = data.get("filename")
-    url = data.get("url")
-    clip_duration = data["clipDuration"]
-    target_language = data.get("targetLanguage", "en")
-
-    if filename:
-        input_file = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-    elif url:
-        # Download the video from the URL
-        input_file = download_video(url)
-    else:
-        return jsonify({"error": "No filename or URL provided"}), 400
-
-    if not os.path.exists(input_file):
-        return jsonify({"error": "Input file not found"}), 404
-
-    output_folder = os.path.join(current_app.config["OUTPUT_FOLDER"], os.path.splitext(os.path.basename(input_file))[0])
-    os.makedirs(output_folder, exist_ok=True)
-
-    def generate():
-        yield json.dumps({"status": "started", "message": "Processing started"}) + "\n"
-
-        clip_generator = process_video_file(input_file, output_folder, clip_duration)
-        running_summary = {}
-
-        for i, clip in enumerate(clip_generator):
-            yield json.dumps({"status": "processing", "message": f"Processing clip {i+1}"}) + "\n"
-            
-            clip_result = process_clip(clip, output_folder, target_language, url or filename)
-            
-            running_summary = update_running_summary(running_summary, clip_result)
-            
-            yield json.dumps({
-                "status": "clip_ready",
-                "data": {
-                    "clip": clip_result,
-                    "output_folder": os.path.basename(output_folder),
-                    "running_summary": running_summary,
-                },
-            }) + "\n"
-
-        fake_detection_result = detect_fake_video(input_file)
-        
-        yield json.dumps({
-            "status": "complete",
-            "message": "Processing complete",
-            "fake_detection_result": fake_detection_result,
-        }) + "\n"
-
-    return Response(stream_with_context(generate()), content_type="application/json")
-    try:
-        data = request.json
-        filename = data["filename"]
-        clip_duration = data["clipDuration"]
-        target_language = data.get("targetLanguage", "en")
-
-        current_app.logger.info(f"Processing video: {filename}")
-
-        input_file = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
-        if not os.path.exists(input_file):
-            raise FileNotFoundError(f"Input file not found: {input_file}")
-
-        output_folder = os.path.join(
-            current_app.config["OUTPUT_FOLDER"], os.path.splitext(filename)[0]
-        )
-        os.makedirs(output_folder, exist_ok=True)
-
-        clips = process_video_file(input_file, output_folder, clip_duration)
-
-        results = []
-        for clip in clips:
-            clip_path = os.path.join(output_folder, clip["filename"])
-            audio_path = os.path.join(output_folder, f"{clip['filename']}.wav")
-
-            audio_extracted = extract_audio(clip_path, audio_path)
-
-            if audio_extracted:
-                speech_text = speech_to_text(audio_path)
-            else:
-                speech_text = (
-                    "Audio extraction failed. No speech recognition performed."
-                )
-
-            ocr_text = ocr_from_video(clip_path)
-
-            combined_text = f"{speech_text} {ocr_text}".strip()
-            translated_text = (
-                translate_text(combined_text, target_language)
-                if combined_text
-                else "No text to translate."
-            )
-
-            results.append(
-                {
-                    **clip,
-                    "speech_text": speech_text,
-                    "ocr_text": ocr_text,
-                    "translated_text": translated_text,
-                }
-            )
-
-            if os.path.exists(audio_path):
-                os.remove(audio_path)  # Clean up temporary audio file
-
-        current_app.logger.info(f"Processed {len(clips)} clips for {filename}")
-        return jsonify(
-            {"clips": results, "output_folder": os.path.splitext(filename)[0]}
-        )
-
-    except FileNotFoundError as e:
-        current_app.logger.error(f"File not found error: {str(e)}")
-        return jsonify({"error": str(e)}), 404
-    except Exception as e:
-        current_app.logger.error(f"Error processing video: {str(e)}")
-        return jsonify({"error": f"Error processing video: {str(e)}"}), 500
 
 @main.route("/process", methods=["POST"])
 def process_video():
