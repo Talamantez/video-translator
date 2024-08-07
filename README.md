@@ -1,8 +1,5 @@
 ##### Assumes Windows Powershell
 
-# Move to the sub-folder 'python'
-`cd python`
-
 ## Create a virtual environment
 `python -m venv .`
 
@@ -16,7 +13,7 @@
 `python app.py`
 
 #### Output
-`\GitHub\upload-scan-translate\python> py .\app.py
+`\GitHub\video-translator> py .\app.py
  * Serving Flask app 'app'
  * Debug mode: on
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.  
