@@ -2,7 +2,6 @@ from flask import Flask
 from config import Config
 import logging
 import os
-from app.routes import main
 from app.utils import static_versioning
 
 def create_app(config_class=Config):
@@ -17,7 +16,10 @@ def create_app(config_class=Config):
     # Initialize extensions here (if any)
 
     # Register blueprints
-    app.register_blueprint(main)
+    from app.routes import main_bp, process_bp, result_bp
+    app.register_blueprint(main_bp)
+    app.register_blueprint(process_bp)
+    app.register_blueprint(result_bp)
 
     # Ensure upload and output folders exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

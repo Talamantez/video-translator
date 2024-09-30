@@ -28,12 +28,9 @@ from summa import keywords, summarizer
 import re
 import subprocess
 
-
 from fractions import Fraction
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-
 
 # Load spaCy models for different languages
 nlp_en = spacy.load("en_core_web_sm")
@@ -185,20 +182,6 @@ def is_sentence_meaningful(sentence):
         print(f"Warning: Error in is_sentence_meaningful. Error: {str(e)}")
         return False  # If there's an error, we'll consider the sentence not meaningful
 
-def get_nlp_model(lang):
-    if lang == "en":
-        return nlp_en
-    elif lang == "fr":
-        return nlp_fr
-    elif lang == "es":
-        return nlp_es
-    elif lang == "de":
-        return nlp_de
-    else:
-        return nlp_en  # Default to English
-
-
-
 @main.route("/")
 def index():
     current_app.logger.debug(f"Current working directory: {os.getcwd()}")
@@ -301,38 +284,6 @@ def update_running_summary(current_summary, new_clip_data):
         current_summary["important_sentences"] = list(set(current_summary["important_sentences"]))[:20]  # Keep top 20 unique sentences
 
     return current_summary
-
-def get_video_duration(filename):
-    try:
-        result = subprocess.run(['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filename],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-        data = json.loads(result.stdout)
-       
-        # Try to get duration from format
-        if 'format' in data and 'duration' in data['format']:
-            return float(data['format']['duration'])
-       
-        # If not in format, try to get from streams
-        if 'streams' in data:
-            for stream in data['streams']:
-                if 'duration' in stream:
-                    return float(stream['duration'])
-       
-        # If we still can't find duration, try to calculate from frames
-        if 'streams' in data:
-            for stream in data['streams']:
-                if stream.get('codec_type') == 'video':
-                    if 'nb_frames' in stream and 'avg_frame_rate' in stream:
-                        nb_frames = int(stream['nb_frames'])
-                        fps = eval(stream['avg_frame_rate'])
-                        if fps != 0:
-                            return nb_frames / fps
-       
-        # If all else fails, return 0
-        return 0
-    except Exception as e:
-        logging.error(f"Error getting video duration: {str(e)}")
-        return 0
 
 def split_video(input_file, output_folder, clip_duration=30):
     if not os.path.exists(output_folder):
@@ -592,7 +543,7 @@ def process_clip(clip, output_folder, target_language, url):
         summary = extract_meaningful_content(combined_text, f"{speech_translated} {ocr_translated}", target_language)
     else:
         summary = {"error": "No meaningful content found"}
-    logging.info(f"Translation and summary complete")
+    logging.info("Translation and summary complete")
 
     clip_name = generate_clip_name(speech_text, ocr_text, image_recognition_results)
     logging.info(f"Generated clip name: {clip_name}")
