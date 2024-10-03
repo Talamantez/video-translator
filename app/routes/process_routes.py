@@ -1,3 +1,5 @@
+from fractions import Fraction
+import re
 import subprocess
 from flask import Blueprint, request, jsonify, current_app, Response
 from werkzeug.utils import secure_filename
@@ -21,22 +23,29 @@ process_bp = Blueprint('process', __name__)
 # Include all the processing functions here (generate_clip_name, update_running_summary, process_clip, etc.)
 
 def generate_clip_name(speech_text, ocr_text, image_recognition_results):
-    # Combine all text
     all_text = f"{speech_text} {ocr_text}"
+    
+    # Clean the text
+    all_text = re.sub(r'[^\w\s]', '', all_text)
+    all_text = all_text.strip()
 
-    # Extract key phrases
-    key_phrases = keywords.keywords(all_text).split("\n")[:3]
+    if len(all_text) < 10:  # Adjust this threshold as needed
+        return "short_clip"  # Fallback for very short text
 
-    # Get top recognized object
-    top_object = (
-        image_recognition_results[0]["label"] if image_recognition_results else ""
-    )
+    try:
+        key_phrases = keywords.keywords(all_text).split("\n")[:3]
+    except Exception as e:
+        logging.warning(f"Keyword extraction failed: {str(e)}")
+        # Fallback: Use the first few words of the text
+        key_phrases = all_text.split()[:3]
 
-    # Combine information to create a name
-    clip_name_parts = key_phrases + [top_object]
-    clip_name = " ".join(clip_name_parts[:3])  # Limit to 3 parts
+    # Use image recognition results if keyword extraction failed
+    if not key_phrases and image_recognition_results:
+        key_phrases = [result['label'] for result in image_recognition_results[:3]]
 
-    return clip_name.capitalize() if clip_name else "Unnamed Clip"
+    # Generate clip name
+    clip_name = "_".join(key_phrases) if key_phrases else "unnamed_clip"
+    return clip_name[:50]  # Limit the length of the clip name
 
 def update_running_summary(current_summary, new_clip_data):
     if not current_summary:

@@ -58,12 +58,45 @@ def download_streaming_video(url, output_path):
 
 def download_video(url, output_path):
     ydl_opts = {
-        'format': 'best[ext=mp4]',
+        'format': '135+140/244+140/134+140/243+140/best',  # Prioritize higher quality formats
         'outtmpl': output_path,
+        'postprocessors': [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }],
+        'verbose': True,  # Enable verbose output
     }
+    
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-
+        try:
+            ydl.download([url])
+        except yt_dlp.utils.DownloadError as e:
+            print(f"An error occurred: {str(e)}")
+            print("Attempting to troubleshoot...")
+            
+            # Try downloading with a lower quality
+            print("Attempting download with lower quality...")
+            ydl.params['format'] = '134+140/243+140/133+139/278+139/worst'
+            try:
+                ydl.download([url])
+                print("Download successful with lower quality.")
+            except yt_dlp.utils.DownloadError:
+                print("Download failed even with lower quality.")
+            
+            # If still failing, try audio-only
+            print("Attempting audio-only download...")
+            ydl.params['format'] = '140/139/251/worst'
+            try:
+                ydl.download([url])
+                print("Audio-only download successful.")
+            except yt_dlp.utils.DownloadError:
+                print("Audio-only download also failed.")
+            
+            # Print yt-dlp version
+            print(f"yt-dlp version: {yt_dlp.version.__version__}")
+            
+            raise e
+     
 def download_from_archive(identifier, output_path):
     ydl_opts = {
         'format': 'best[ext=mp4]',
