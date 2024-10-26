@@ -1,8 +1,9 @@
-        Lib/
-        Scripts/
-        __init__.py
-        __pycache__/
-        output/
-        saved_results/
-        share/
-        uploads/
+__init__.py
+output/
+saved_results/
+share/
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+venv/

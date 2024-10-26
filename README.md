@@ -1,10 +1,10 @@
 ##### Assumes Windows Powershell
 
 ## Create a virtual environment
-`python -m venv .`
+`python -m venv venv`
 
 ## Spin up the environment
-`.\Scripts\Activate.ps1`
+`.\venv\Scripts\Activate.ps1`
 
 ## Install Requirements
 `pip install -r requirements.txt`
