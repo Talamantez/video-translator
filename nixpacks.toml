@@ -2,14 +2,17 @@
 nixPkgs = [
     "gcc",
     "python311",
-    "libGL",
-    "glib",
-    "xorg.libSM",
-    "xorg.libXext",
-    "xorg.libXrender",
-    "gtk3",
     "ffmpeg",
-    "tesseract"
+    "tesseract",
+    "stdenv.cc.cc.lib"
+]
+
+[phases.build]
+cmds = [
+    "python -m venv /opt/venv",
+    ". /opt/venv/bin/activate",
+    "pip install --upgrade pip",
+    "pip install -r requirements.txt"
 ]
 
 [start]
