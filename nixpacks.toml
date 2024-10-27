@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = [
+    "gcc",
+    "python311",
+    "libGL",
+    "glib",
+    "xorg.libSM",
+    "xorg.libXext",
+    "xorg.libXrender",
+    "gtk3",
+    "ffmpeg",
+    "tesseract"
+]
+
+[start]
+cmd = "gunicorn run:app --bind=0.0.0.0:$PORT"

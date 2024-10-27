@@ -1,9 +1,10 @@
 {
     "build": {
-        "builder": "NIXPACKS"
+        "builder": "NIXPACKS",
+        "nixpacksConfigPath": "nixpacks.toml"
     },
     "deploy": {
-        "startCommand": "gunicorn run:app --bind=0.0.0.0:5000",
+        "startCommand": "gunicorn run:app --bind 0.0.0.0:$PORT",
         "restartPolicyType": "ON_FAILURE",
         "restartPolicyMaxRetries": 10
     }
