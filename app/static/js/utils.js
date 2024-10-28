@@ -324,48 +324,189 @@ function displayRunningSummary(summary) {
 }
 
 function createClipElement(clip, outputFolder) {
-  console.log("Creating clip element with summary:", clip.summary);
+  console.log("Creating clip element with data:", clip);
   const clipElement = document.createElement("div");
   clipElement.className = "clip";
+
+  // Generate unique IDs for this clip's video and canvas
+  const videoId = `video-${Math.random().toString(36).substr(2, 9)}`;
+  const canvasId = `canvas-${Math.random().toString(36).substr(2, 9)}`;
+
   clipElement.innerHTML = `
       <h5><b>${clip.clip_name}</b></h5>
-      <div class="video-container">
-        <div class="video-info">
-          <span>Source: ${clip.source_url || "Not available"}</span>
-          <br>
-          <span>Last accessed: ${clip.access_time || "Not available"}</span>
-        </div>
-        <video width="100%" controls>
-          <source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">
-        </video>
+      <div class="video-container position-relative">
+          <video id="${videoId}" width="100%" controls>
+              <source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">
+          </video>
+          <canvas id="${canvasId}" class="detection-overlay"></canvas>
       </div>
-      <p>Start: ${clip.start ? clip.start.toFixed(2) : "N/A"}s | End: ${
-    clip.end ? clip.end.toFixed(2) : "N/A"
-  }s</p>
-            <h6>Speech Recognition:</h6>
-        <div class="text-content">${
+      <div class="detection-stats mt-3">
+          <h6>Detected Objects:</h6>
+          <ul class="list-unstyled">
+              ${
+    (clip.image_recognition.detections || [])
+      .map((det) => `
+                      <li class="mb-1">
+                          <span class="badge bg-primary">${det.class}</span>
+                          <small class="text-muted">
+                              ${(det.confidence * 100).toFixed(1)}% at ${
+        det.timestamp.toFixed(1)
+      }s
+                          </small>
+                      </li>
+                  `).join("")
+  }
+          </ul>
+          
+          <h6 class="mt-3">Scene Classifications:</h6>
+          <ul class="list-unstyled">
+              ${
+    (clip.image_recognition.classifications || [])
+      .map((cls) => `
+                      <li class="mb-1">
+                          <span class="badge bg-secondary">${cls.label}</span>
+                          <small class="text-muted">
+                              ${(cls.confidence * 100).toFixed(1)}%
+                          </small>
+                      </li>
+                  `).join("")
+  }
+          </ul>
+      </div>
+      <div class="mt-3">
+          <h6>Speech Recognition:</h6>
+          <div class="text-content">${
     clip.speech_text || "No speech detected."
   }</div>
           <h6>Speech Translation:</h6>
-        <div class="text-content translated-content">${
+          <div class="text-content translated-content">${
     clip.speech_translated || "No speech translation available."
   }</div>
+      </div>
+      <div class="mt-3">
           <h6>OCR Text:</h6>
-        <div class="text-content">${
+          <div class="text-content">${
     clip.ocr_text || "No text detected in video."
   }</div>
-        <h6>OCR Translation:</h6>
-        <div class="text-content translated-content">${
+          <h6>OCR Translation:</h6>
+          <div class="text-content translated-content">${
     clip.ocr_translated || "No OCR translation available."
   }</div>
-      <div>${displaySummary(clip.summary)}</div>
-      <div class="image-recognition-results">
-        <h6>Image Recognition Results:</h6>
-        <p>${displayImageRecognitionResults(clip.image_recognition)}</p>
       </div>
-    `;
+      <div class="mt-3">${displaySummary(clip.summary)}</div>
+  `;
+
+  // Set up detection overlay after the element is added to the DOM
+  setTimeout(() => {
+    const video = document.getElementById(videoId);
+    const canvas = document.getElementById(canvasId);
+
+    if (video && canvas) {
+      setupDetectionOverlay(
+        video,
+        canvas,
+        clip.image_recognition.detections || [],
+      );
+    }
+  }, 0);
+
   return clipElement;
 }
+
+function setupDetectionOverlay(video, canvas, detections) {
+  // Set up canvas positioning
+  canvas.style.position = "absolute";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.style.pointerEvents = "none";
+
+  // Initialize canvas when video metadata is loaded
+  video.addEventListener("loadedmetadata", () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  });
+
+  // Update detections while video plays
+  video.addEventListener("timeupdate", () => {
+    const currentTime = video.currentTime;
+    drawDetections(canvas, currentTime, detections);
+  });
+}
+
+function drawDetections(canvas, currentTime, detections) {
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Find detections within 0.5 seconds of current time
+  const relevantDetections = detections.filter(
+    (d) => Math.abs(d.timestamp - currentTime) < 0.5,
+  );
+
+  relevantDetections.forEach((detection) => {
+    const [x1, y1, x2, y2] = detection.bbox;
+    const width = x2 - x1;
+    const height = y2 - y1;
+
+    // Draw box
+    ctx.strokeStyle = "#00ff00";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, width, height);
+
+    // Draw label background
+    const label = `${detection.class} ${
+      Math.round(detection.confidence * 100)
+    }%`;
+    ctx.font = "14px Arial";
+    const textMetrics = ctx.measureText(label);
+    const textHeight = 20;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(
+      x1,
+      y1 > textHeight ? y1 - textHeight : y1,
+      textMetrics.width + 10,
+      textHeight,
+    );
+
+    // Draw label text
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(
+      label,
+      x1 + 5,
+      y1 > textHeight ? y1 - 5 : y1 + 15,
+    );
+  });
+}
+
+// Add CSS for the detection overlay
+document.head.insertAdjacentHTML(
+  "beforeend",
+  `
+  <style>
+      .video-container {
+          position: relative;
+          width: 100%;
+          margin-bottom: 1rem;
+      }
+      
+      .detection-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          pointer-events: none;
+      }
+      
+      .detection-stats {
+          background: #f8f9fa;
+          padding: 1rem;
+          border-radius: 0.25rem;
+      }
+      
+      .badge {
+          margin-right: 0.5rem;
+      }
+  </style>
+`,
+);
 
 function displayImageRecognitionResults(results) {
   if (!results || results.length === 0) {

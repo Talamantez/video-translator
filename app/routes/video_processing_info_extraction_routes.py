@@ -4,6 +4,11 @@ import logging
 import re
 from fractions import Fraction
 from .utils_routes import get_video_duration
+from ultralytics import YOLO
+import cv2
+
+# Initialize YOLO model globally - will load only once
+model = YOLO('yolov8n.pt')  # using the smallest model to start
 
 def split_video(input_file, output_folder, clip_duration=30):
     if not os.path.exists(output_folder):
@@ -114,6 +119,55 @@ def count_frames_ffmpeg(input_file):
         logging.error(f"Error running ffmpeg: {e.output.decode('utf-8')}")
         raise
 
+def detect_objects_in_clip(clip_path):
+    """
+    Perform object detection on key frames of a video clip
+    Returns a dict of detected objects with timestamps
+    """
+    try:
+        cap = cv2.VideoCapture(clip_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        # Process one frame per second
+        detections = []
+        for frame_idx in range(0, frame_count, int(fps)):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+                
+            # Run YOLO detection
+            results = model(frame)
+            
+            # Get timestamp for this frame
+            timestamp = frame_idx / fps
+            
+            # Process results
+            frame_detections = []
+            for r in results[0]:
+                for box in r.boxes:
+                    obj = {
+                        'class': model.names[int(box.cls[0])],
+                        'confidence': float(box.conf[0]),
+                        'bbox': box.xyxy[0].tolist(),
+                        'timestamp': timestamp
+                    }
+                    frame_detections.append(obj)
+            
+            if frame_detections:
+                detections.append({
+                    'timestamp': timestamp,
+                    'objects': frame_detections
+                })
+        
+        cap.release()
+        return detections
+        
+    except Exception as e:
+        logging.error(f"Error in object detection for {clip_path}: {str(e)}")
+        return []
+
 def process_video_file_generator(input_file, output_folder, clip_duration):
     logging.info(f"Starting video file processing: input_file={input_file}, output_folder={output_folder}, clip_duration={clip_duration}")
     try:
@@ -133,8 +187,8 @@ def process_video_file_generator(input_file, output_folder, clip_duration):
                 '-i', input_file,
                 '-ss', str(start_time),
                 '-t', str(end_time - start_time),
-                '-c', 'copy',  # This copies the codec without re-encoding, which is faster
-                '-y',  # Overwrite output file if it exists
+                '-c', 'copy',
+                '-y',
                 clip_path
             ]
             logging.info(f"Running ffmpeg command: {' '.join(ffmpeg_cmd)}")
@@ -142,10 +196,15 @@ def process_video_file_generator(input_file, output_folder, clip_duration):
             
             if os.path.exists(clip_path):
                 logging.info(f"Successfully created clip: {clip_path}")
+                
+                # Perform object detection on the clip
+                detections = detect_objects_in_clip(clip_path)
+                
                 yield {
                     "filename": clip_filename,
                     "start": start_time,
-                    "end": end_time
+                    "end": end_time,
+                    "objects": detections  # Add object detections to the output
                 }
             else:
                 logging.error(f"Failed to create clip: {clip_path}")
