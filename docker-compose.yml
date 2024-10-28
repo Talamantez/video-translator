@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "8080:8080"
     volumes:
       - .:/app
       - upload_data:/app/uploads
@@ -13,7 +13,7 @@ services:
       - FLASK_ENV=development
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-    command: flask run --host=0.0.0.0 --port=5000
+    command: flask run --host=0.0.0.0 --port=8080
 
 volumes:
   upload_data:

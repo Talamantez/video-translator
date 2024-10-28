@@ -17,13 +17,13 @@
  * Serving Flask app 'app'
  * Debug mode: on
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.  
- * Running on http://127.0.0.1:5000
+ * Running on http://127.0.0.1:8080
 Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 100-503-661`
 
- ## Visit templates/index.html at http://127.0.0.1:5000/ in your browser
+ ## Visit templates/index.html at http://127.0.0.1:8080/ in your browser
 
  ## Example short-ish clips:
  ### Dit was de week

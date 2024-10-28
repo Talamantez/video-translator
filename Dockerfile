@@ -34,6 +34,6 @@ ENV FLASK_APP=run.py
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 5000
+EXPOSE 8080
 
 CMD ["flask", "run", "--host=0.0.0.0"]
