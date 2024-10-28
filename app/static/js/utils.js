@@ -526,11 +526,6 @@ function removePlaceholders(resultContainer) {
   placeholders.forEach((placeholder) => placeholder.remove());
 }
 
-function displayClip(clip, outputFolder, resultContainer) {
-  const clipElement = createClipElement(clip, outputFolder);
-  resultContainer.appendChild(clipElement);
-  resultContainer.scrollTop = resultContainer.scrollHeight;
-}
 
 function updateSavedResultsList() {
   fetch("/list_saved_results")
@@ -553,3 +548,221 @@ function updateSavedResultsList() {
       showToast("Error fetching saved results", "danger");
     });
 }
+
+function displayClip(clip, outputFolder, resultContainer) {
+  const viewer = createVideoViewer(clip, outputFolder);
+  resultContainer.appendChild(viewer);
+  resultContainer.scrollTop = resultContainer.scrollHeight;
+}
+
+function createVideoViewer(clip, outputFolder) {
+  const container = document.createElement('div');
+  container.className = 'video-detection-container mb-4';
+  
+  const videoId = `video-${Math.random().toString(36).substr(2, 9)}`;
+  const canvasId = `canvas-${Math.random().toString(36).substr(2, 9)}`;
+  
+  container.innerHTML = `
+      <div class="card">
+          <div class="card-header">
+              <h5 class="mb-0">${clip.clip_name}</h5>
+          </div>
+          <div class="card-body">
+              <div class="video-wrapper position-relative">
+                  <video id="${videoId}" class="w-100" controls>
+                      <source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">
+                  </video>
+                  <canvas id="${canvasId}" class="detection-overlay"></canvas>
+              </div>
+              
+              <div class="detections-panel mt-3">
+                  <div class="row">
+                      <div class="col-md-6">
+                          <h6>Real-time Detections:</h6>
+                          <div class="detection-list">
+                              ${(clip.image_recognition.detections || [])
+                                  .filter(det => det.confidence > 0.5)
+                                  .map(det => `
+                                      <div class="detection-item" 
+                                           data-timestamp="${det.timestamp}"
+                                           style="border-left: 4px solid ${getColorForConfidence(det.confidence)}">
+                                          <span class="detection-label">${det.class}</span>
+                                          <span class="detection-confidence">${(det.confidence * 100).toFixed(1)}%</span>
+                                          <span class="detection-time">${det.timestamp.toFixed(1)}s</span>
+                                      </div>
+                                  `).join('')}
+                          </div>
+                      </div>
+                      
+                      <div class="col-md-6">
+                          <h6>Scene Classifications:</h6>
+                          <div class="classification-list">
+                              ${(clip.image_recognition.classifications || [])
+                                  .filter(cls => cls.confidence > 0.3)
+                                  .map(cls => `
+                                      <div class="classification-item">
+                                          <span class="classification-label">${cls.label}</span>
+                                          <div class="progress">
+                                              <div class="progress-bar" 
+                                                   role="progressbar" 
+                                                   style="width: ${cls.confidence * 100}%"
+                                                   aria-valuenow="${cls.confidence * 100}" 
+                                                   aria-valuemin="0" 
+                                                   aria-valuemax="100">
+                                                  ${(cls.confidence * 100).toFixed(1)}%
+                                              </div>
+                                          </div>
+                                      </div>
+                                  `).join('')}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="mt-3">
+                  <h6>Speech Recognition:</h6>
+                  <div class="text-content">${clip.speech_text || "No speech detected."}</div>
+                  
+                  <h6 class="mt-3">OCR Text:</h6>
+                  <div class="text-content">${clip.ocr_text || "No text detected."}</div>
+              </div>
+          </div>
+      </div>
+  `;
+
+  // Set up the detection overlay
+  const video = container.querySelector(`#${videoId}`);
+  const canvas = container.querySelector(`#${canvasId}`);
+  
+  setupDetectionOverlay(video, canvas, clip.image_recognition.detections || []);
+  
+  return container;
+}
+
+function getColorForConfidence(confidence) {
+  const hue = confidence * 120; // 0 = red, 120 = green
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
+function setupDetectionOverlay(video, canvas, detections) {
+  canvas.style.position = 'absolute';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.pointerEvents = 'none';
+
+  video.addEventListener('loadedmetadata', () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+  });
+
+  video.addEventListener('timeupdate', () => {
+      const currentTime = video.currentTime;
+      drawDetections(canvas, currentTime, detections);
+      
+      // Highlight current detections in the list
+      const detectionItems = document.querySelectorAll('.detection-item');
+      detectionItems.forEach(item => {
+          const timestamp = parseFloat(item.dataset.timestamp);
+          if (Math.abs(currentTime - timestamp) < 0.5) {
+              item.classList.add('active');
+          } else {
+              item.classList.remove('active');
+          }
+      });
+  });
+}
+
+function drawDetections(canvas, currentTime, detections) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Find detections within 0.5 seconds of current time
+  const relevantDetections = detections.filter(
+      d => Math.abs(d.timestamp - currentTime) < 0.5
+  );
+
+  relevantDetections.forEach(detection => {
+      const [x1, y1, x2, y2] = detection.bbox;
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      // Draw box
+      ctx.strokeStyle = getColorForConfidence(detection.confidence);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1, y1, width, height);
+
+      // Draw label background
+      const label = `${detection.class} ${Math.round(detection.confidence * 100)}%`;
+      ctx.font = '14px Arial';
+      const textMetrics = ctx.measureText(label);
+      const textHeight = 20;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(
+          x1,
+          y1 > textHeight ? y1 - textHeight : y1,
+          textMetrics.width + 10,
+          textHeight
+      );
+
+      // Draw label text
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(
+          label,
+          x1 + 5,
+          y1 > textHeight ? y1 - 5 : y1 + 15
+      );
+  });
+}
+
+// Add the required styles to the document
+document.head.insertAdjacentHTML('beforeend', `
+  <style>
+      .video-detection-container {
+          max-width: 1200px;
+          margin: 0 auto;
+      }
+      
+      .video-wrapper {
+          position: relative;
+          width: 100%;
+          background: #000;
+      }
+      
+      .detection-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          pointer-events: none;
+      }
+      
+      .detection-item {
+          padding: 8px;
+          margin-bottom: 4px;
+          background: #f8f9fa;
+          border-radius: 4px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: all 0.3s;
+      }
+      
+      .detection-item.active {
+          background: #e9ecef;
+          transform: scale(1.02);
+      }
+      
+      .classification-item {
+          margin-bottom: 12px;
+      }
+      
+      .classification-label {
+          display: block;
+          margin-bottom: 4px;
+      }
+      
+      .detection-time {
+          color: #6c757d;
+          font-size: 0.875em;
+      }
+  </style>
+`);
