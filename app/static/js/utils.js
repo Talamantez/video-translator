@@ -709,7 +709,6 @@ function createVideoViewer(clip, outputFolder) {
   const canvas = document.createElement("canvas");
   canvas.className = "detection-overlay";
 
-  // Create HTML structure
   container.innerHTML = `
       <div class="card">
           <div class="card-header">
@@ -721,35 +720,62 @@ function createVideoViewer(clip, outputFolder) {
               </div>
               
               <div class="mt-3">
-                  <div class="row">
-                      <div class="col-md-4">
-                          <h6>Detections:</h6>
-                          <div class="detection-list">
-                              ${renderDetections(clip.image_recognition)}
+                  <div class="accordion" id="clip-${Date.now()}">
+                      <div class="accordion-item">
+                          <h6 class="accordion-header">
+                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                      data-bs-target="#detections-${Date.now()}">
+                                  Detections (${
+    clip.image_recognition?.detections?.length || 0
+  })
+                              </button>
+                          </h6>
+                          <div id="detections-${Date.now()}" class="accordion-collapse collapse">
+                              <div class="accordion-body detection-list">
+                                  ${renderDetections(clip.image_recognition)}
+                              </div>
                           </div>
                       </div>
                       
-                      <div class="col-md-4">
-                          <h6>OCR Text:</h6>
-                          <div class="text-content">${
+                      <div class="accordion-item">
+                          <h6 class="accordion-header">
+                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                      data-bs-target="#ocr-${Date.now()}">
+                                  OCR & Translation
+                              </button>
+                          </h6>
+                          <div id="ocr-${Date.now()}" class="accordion-collapse collapse">
+                              <div class="accordion-body">
+                                  <div class="text-content">${
     clip.ocr_text || "No text detected."
   }</div>
-                          <div class="text-content text-muted mt-2">
-                              ${
+                                  <div class="text-content text-muted mt-2">
+                                      ${
     clip.ocr_translated || "No translation available."
   }
+                                  </div>
+                              </div>
                           </div>
                       </div>
 
-                      <div class="col-md-4">
-                          <h6>Speech Recognition:</h6>
-                          <div class="text-content">${
+                      <div class="accordion-item">
+                          <h6 class="accordion-header">
+                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                      data-bs-target="#speech-${Date.now()}">
+                                  Speech Recognition
+                              </button>
+                          </h6>
+                          <div id="speech-${Date.now()}" class="accordion-collapse collapse">
+                              <div class="accordion-body">
+                                  <div class="text-content">${
     clip.speech_text || "No speech detected."
   }</div>
-                          <div class="text-content text-muted mt-2">
-                              ${
+                                  <div class="text-content text-muted mt-2">
+                                      ${
     clip.speech_translated || "No translation available."
   }
+                                  </div>
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -764,6 +790,9 @@ function createVideoViewer(clip, outputFolder) {
     `<source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">`;
   videoWrapper.appendChild(video);
   videoWrapper.appendChild(canvas);
+
+  // Set up autoplay on scroll
+  setupAutoplay(video);
 
   // Set up overlays
   const overlayData = {
@@ -782,6 +811,21 @@ function createVideoViewer(clip, outputFolder) {
   });
 
   return container;
+}
+
+// Add this function for autoplay
+function setupAutoplay(video) {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        video.play().catch((e) => console.log("Autoplay prevented:", e));
+      } else {
+        video.pause();
+      }
+    });
+  }, { threshold: 0.9 }); // 90% of video needs to be visible
+
+  observer.observe(video);
 }
 
 function getColorForConfidence(confidence) {
@@ -913,6 +957,34 @@ document.head.insertAdjacentHTML(
           color: #6c757d;
           font-size: 0.875em;
       }
+                  .accordion-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .accordion-body {
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .detection-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.5rem;
+        }
+        
+        .detection-item {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .text-content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
   </style>
 `,
 );
