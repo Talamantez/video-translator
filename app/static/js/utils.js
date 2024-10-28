@@ -1,4 +1,12 @@
 // utils.js
+
+const DEBUG = true;
+function debugLog(...args) {
+  if (DEBUG) {
+    console.log(...args);
+  }
+}
+
 function showToast(message, type = "info") {
   const toastContainer = document.querySelector(".toast-container");
   const toast = document.createElement("div");
@@ -148,6 +156,90 @@ function displayFakeVideoAnalysis(fakeDetectionResult) {
   return analysisHtml;
 }
 
+function drawOverlays(canvas, currentTime, data) {
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw YOLO detections
+  if (data.image_recognition?.detections) {
+    const relevantDetections = data.image_recognition.detections.filter(
+      (d) => Math.abs(d.timestamp - currentTime) < 0.5,
+    );
+
+    relevantDetections.forEach((det) => {
+      const [x1, y1, x2, y2] = det.bbox;
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      ctx.strokeStyle = "#00ff00";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1, y1, width, height);
+
+      const label = `${det.class} ${Math.round(det.confidence * 100)}%`;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      ctx.fillRect(x1, y1 - 20, ctx.measureText(label).width + 10, 20);
+      ctx.fillStyle = "#fff";
+      ctx.font = "14px Arial";
+      ctx.fillText(label, x1 + 5, y1 - 5);
+    });
+  }
+
+  // Draw OCR and Speech overlays
+  drawTextOverlays(ctx, currentTime, data);
+}
+
+function drawTextOverlays(ctx, currentTime, data) {
+  const padding = 10;
+  ctx.font = "16px Arial";
+
+  // Draw OCR at top
+  if (data.ocr_text) {
+    const y = 30;
+    drawTextWithBackground(ctx, data.ocr_text, padding, y, "#00ff00");
+    if (data.ocr_translated) {
+      drawTextWithBackground(
+        ctx,
+        data.ocr_translated,
+        padding,
+        y + 25,
+        "#aaffaa",
+      );
+    }
+  }
+
+  // Draw Speech at bottom
+  if (data.speech_text) {
+    const y = canvas.height - 60;
+    drawTextWithBackground(ctx, data.speech_text, padding, y, "#ffffff");
+    if (data.speech_translated) {
+      drawTextWithBackground(
+        ctx,
+        data.speech_translated,
+        padding,
+        y + 25,
+        "#aaccff",
+      );
+    }
+  }
+}
+
+function drawTextWithBackground(ctx, text, x, y, color) {
+  const metrics = ctx.measureText(text);
+  const padding = 5;
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(x - padding, y - 16, metrics.width + (padding * 2), 24);
+
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function setupVideoViewer(video, canvas, data) {
+  video.addEventListener("timeupdate", () => {
+    drawOverlays(canvas, video.currentTime, data);
+  });
+}
+
 function getAnalysisDetail(result, check) {
   const details = {
     frame_rate:
@@ -273,54 +365,57 @@ function updateProjectTitle(summary) {
   }
 }
 
-function displayRunningSummary(summary) {
-  updateProjectTitle(summary);
+function displayRunningSummary(summary = {}) {
+  if (!summary) {
+    return '<div class="alert alert-info">No summary available yet</div>';
+  }
+
   return `
       <div class="running-summary">
-        <h4>Running Summary</h4>
-        <div class="summary-section">
-          <h5>Key Topics:</h5>
-          <ul class="summary-list">
-            ${
-    summary.key_topics
+          <h4>Running Summary</h4>
+          <div class="summary-section">
+              <h5>Key Topics:</h5>
+              <ul class="summary-list">
+                  ${
+    (summary.key_phrases || []) // Changed from key_topics to key_phrases
       .map((topic) => `<li>${topic}</li>`)
       .join("")
   }
-          </ul>
-        </div>
-        <div class="summary-section">
-          <h5>Main Entities:</h5>
-          <ul class="summary-list">
-            ${
-    summary.main_entities
+              </ul>
+          </div>
+          <div class="summary-section">
+              <h5>Main Entities:</h5>
+              <ul class="summary-list">
+                  ${
+    (summary.entities || [])
       .map((entity) => `<li>${entity}</li>`)
       .join("")
   }
-          </ul>
-        </div>
-        <div class="summary-section">
-          <h5>Recognized Objects:</h5>
-          <ul class="summary-list">
-            ${
-    summary.recognized_objects
+              </ul>
+          </div>
+          <div class="summary-section">
+              <h5>Recognized Objects:</h5>
+              <ul class="summary-list">
+                  ${
+    (summary.recognized_objects || [])
       .map((object) => `<li>${object}</li>`)
       .join("")
   }
-          </ul>
-        </div>
-        <div class="important-sentences">
-          <h5>Important Sentences:</h5>
-          <ul>
-            ${
-    summary.important_sentences
+              </ul>
+          </div>
+          <div class="important-sentences">
+              <h5>Important Sentences:</h5>
+              <ul>
+                  ${
+    (summary.important_sentences || [])
       .map((sentence) => `<li>"${sentence}"</li>`)
       .join("")
   }
-          </ul>
-          <p class="important-sentences-note">Note: Sentences have been filtered for relevance and coherence.</p>
-        </div>
+              </ul>
+              <p class="important-sentences-note">Note: Sentences have been filtered for relevance and coherence.</p>
+          </div>
       </div>
-    `;
+  `;
 }
 
 function createClipElement(clip, outputFolder) {
@@ -482,27 +577,29 @@ document.head.insertAdjacentHTML(
   "beforeend",
   `
   <style>
-      .video-container {
+      .video-wrapper {
           position: relative;
           width: 100%;
+          background: #000;
           margin-bottom: 1rem;
       }
-      
+
       .detection-overlay {
           position: absolute;
           top: 0;
           left: 0;
           pointer-events: none;
+          z-index: 1;
       }
-      
-      .detection-stats {
-          background: #f8f9fa;
-          padding: 1rem;
-          border-radius: 0.25rem;
+
+      .ocr-text {
+          text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+          font-family: Arial, sans-serif;
       }
-      
-      .badge {
-          margin-right: 0.5rem;
+
+      .ocr-translated {
+          font-style: italic;
+          opacity: 0.9;
       }
   </style>
 `,
@@ -525,7 +622,6 @@ function removePlaceholders(resultContainer) {
   const placeholders = resultContainer.querySelectorAll(".clip-placeholder");
   placeholders.forEach((placeholder) => placeholder.remove());
 }
-
 
 function updateSavedResultsList() {
   fetch("/list_saved_results")
@@ -550,92 +646,141 @@ function updateSavedResultsList() {
 }
 
 function displayClip(clip, outputFolder, resultContainer) {
+  console.log("Displaying clip:", clip);
   const viewer = createVideoViewer(clip, outputFolder);
   resultContainer.appendChild(viewer);
   resultContainer.scrollTop = resultContainer.scrollHeight;
 }
 
+function renderDetections(imageRecognition) {
+  if (!imageRecognition?.detections?.length) {
+    return "<p>No detections found</p>";
+  }
+
+  return imageRecognition.detections
+    .map((det) => `
+          <div class="detection-item">
+              <span class="badge bg-primary">${det.class}</span>
+              <small>${(det.confidence * 100).toFixed(1)}%</small>
+              <small class="text-muted">at ${det.timestamp?.toFixed(1)}s</small>
+          </div>
+      `)
+    .join("");
+}
+function setupVideoViewer(video, canvas, data) {
+  video.addEventListener("timeupdate", () => {
+    drawOverlays(canvas, video.currentTime, data);
+  });
+}
+// Add this helper function to safely access nested properties
+function safeGet(obj, path, defaultValue = null) {
+  try {
+    return path.split(".").reduce((o, k) => o[k], obj) ?? defaultValue;
+  } catch (e) {
+    console.warn(`Error accessing path ${path}:`, e);
+    return defaultValue;
+  }
+}
+
+function processOCRResults(ocrText, translatedText) {
+  // This is a placeholder - you'll need to modify based on your actual OCR output format
+  return ocrText.split("\n").map((text, index) => {
+    const translated = translatedText.split("\n")[index];
+    return {
+      text: text,
+      translated: translated,
+      // You'll need to get actual bounding boxes from your OCR output
+      bbox: [100, 100 + (index * 50), 300, 30],
+      confidence: 0.9,
+    };
+  }).filter((result) => result.text.trim() !== "");
+}
+
 function createVideoViewer(clip, outputFolder) {
-  const container = document.createElement('div');
-  container.className = 'video-detection-container mb-4';
-  
-  const videoId = `video-${Math.random().toString(36).substr(2, 9)}`;
-  const canvasId = `canvas-${Math.random().toString(36).substr(2, 9)}`;
-  
+  console.log("Creating viewer for clip:", clip);
+  const container = document.createElement("div");
+  container.className = "video-detection-container mb-4";
+
+  // Create elements first
+  const video = document.createElement("video");
+  video.className = "w-100";
+  video.controls = true;
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "detection-overlay";
+
+  // Create HTML structure
   container.innerHTML = `
       <div class="card">
           <div class="card-header">
-              <h5 class="mb-0">${clip.clip_name}</h5>
+              <h5 class="mb-0">${clip.clip_name || "Unnamed Clip"}</h5>
           </div>
           <div class="card-body">
               <div class="video-wrapper position-relative">
-                  <video id="${videoId}" class="w-100" controls>
-                      <source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">
-                  </video>
-                  <canvas id="${canvasId}" class="detection-overlay"></canvas>
+                  <div id="video-container"></div>
               </div>
               
-              <div class="detections-panel mt-3">
+              <div class="mt-3">
                   <div class="row">
-                      <div class="col-md-6">
-                          <h6>Real-time Detections:</h6>
+                      <div class="col-md-4">
+                          <h6>Detections:</h6>
                           <div class="detection-list">
-                              ${(clip.image_recognition.detections || [])
-                                  .filter(det => det.confidence > 0.5)
-                                  .map(det => `
-                                      <div class="detection-item" 
-                                           data-timestamp="${det.timestamp}"
-                                           style="border-left: 4px solid ${getColorForConfidence(det.confidence)}">
-                                          <span class="detection-label">${det.class}</span>
-                                          <span class="detection-confidence">${(det.confidence * 100).toFixed(1)}%</span>
-                                          <span class="detection-time">${det.timestamp.toFixed(1)}s</span>
-                                      </div>
-                                  `).join('')}
+                              ${renderDetections(clip.image_recognition)}
                           </div>
                       </div>
                       
-                      <div class="col-md-6">
-                          <h6>Scene Classifications:</h6>
-                          <div class="classification-list">
-                              ${(clip.image_recognition.classifications || [])
-                                  .filter(cls => cls.confidence > 0.3)
-                                  .map(cls => `
-                                      <div class="classification-item">
-                                          <span class="classification-label">${cls.label}</span>
-                                          <div class="progress">
-                                              <div class="progress-bar" 
-                                                   role="progressbar" 
-                                                   style="width: ${cls.confidence * 100}%"
-                                                   aria-valuenow="${cls.confidence * 100}" 
-                                                   aria-valuemin="0" 
-                                                   aria-valuemax="100">
-                                                  ${(cls.confidence * 100).toFixed(1)}%
-                                              </div>
-                                          </div>
-                                      </div>
-                                  `).join('')}
+                      <div class="col-md-4">
+                          <h6>OCR Text:</h6>
+                          <div class="text-content">${
+    clip.ocr_text || "No text detected."
+  }</div>
+                          <div class="text-content text-muted mt-2">
+                              ${
+    clip.ocr_translated || "No translation available."
+  }
+                          </div>
+                      </div>
+
+                      <div class="col-md-4">
+                          <h6>Speech Recognition:</h6>
+                          <div class="text-content">${
+    clip.speech_text || "No speech detected."
+  }</div>
+                          <div class="text-content text-muted mt-2">
+                              ${
+    clip.speech_translated || "No translation available."
+  }
                           </div>
                       </div>
                   </div>
-              </div>
-
-              <div class="mt-3">
-                  <h6>Speech Recognition:</h6>
-                  <div class="text-content">${clip.speech_text || "No speech detected."}</div>
-                  
-                  <h6 class="mt-3">OCR Text:</h6>
-                  <div class="text-content">${clip.ocr_text || "No text detected."}</div>
               </div>
           </div>
       </div>
   `;
 
-  // Set up the detection overlay
-  const video = container.querySelector(`#${videoId}`);
-  const canvas = container.querySelector(`#${canvasId}`);
-  
-  setupDetectionOverlay(video, canvas, clip.image_recognition.detections || []);
-  
+  // Insert video and canvas
+  const videoWrapper = container.querySelector(".video-wrapper");
+  video.innerHTML =
+    `<source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">`;
+  videoWrapper.appendChild(video);
+  videoWrapper.appendChild(canvas);
+
+  // Set up overlays
+  const overlayData = {
+    image_recognition: clip.image_recognition,
+    ocr_text: clip.ocr_text,
+    ocr_translated: clip.ocr_translated,
+    speech_text: clip.speech_text,
+    speech_translated: clip.speech_translated,
+  };
+
+  // Initialize video and canvas
+  video.addEventListener("loadedmetadata", () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    setupVideoViewer(video, canvas, overlayData);
+  });
+
   return container;
 }
 
@@ -645,77 +790,81 @@ function getColorForConfidence(confidence) {
 }
 
 function setupDetectionOverlay(video, canvas, detections) {
-  canvas.style.position = 'absolute';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
-  canvas.style.pointerEvents = 'none';
+  canvas.style.position = "absolute";
+  canvas.style.top = "0";
+  canvas.style.left = "0";
+  canvas.style.pointerEvents = "none";
 
-  video.addEventListener('loadedmetadata', () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+  video.addEventListener("loadedmetadata", () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
   });
 
-  video.addEventListener('timeupdate', () => {
-      const currentTime = video.currentTime;
-      drawDetections(canvas, currentTime, detections);
-      
-      // Highlight current detections in the list
-      const detectionItems = document.querySelectorAll('.detection-item');
-      detectionItems.forEach(item => {
-          const timestamp = parseFloat(item.dataset.timestamp);
-          if (Math.abs(currentTime - timestamp) < 0.5) {
-              item.classList.add('active');
-          } else {
-              item.classList.remove('active');
-          }
-      });
+  video.addEventListener("timeupdate", () => {
+    const currentTime = video.currentTime;
+    drawDetections(canvas, currentTime, detections);
+
+    // Highlight current detections in the list
+    const detectionItems = document.querySelectorAll(".detection-item");
+    detectionItems.forEach((item) => {
+      const timestamp = parseFloat(item.dataset.timestamp);
+      if (Math.abs(currentTime - timestamp) < 0.5) {
+        item.classList.add("active");
+      } else {
+        item.classList.remove("active");
+      }
+    });
   });
 }
 
 function drawDetections(canvas, currentTime, detections) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Find detections within 0.5 seconds of current time
   const relevantDetections = detections.filter(
-      d => Math.abs(d.timestamp - currentTime) < 0.5
+    (d) => Math.abs(d.timestamp - currentTime) < 0.5,
   );
 
-  relevantDetections.forEach(detection => {
-      const [x1, y1, x2, y2] = detection.bbox;
-      const width = x2 - x1;
-      const height = y2 - y1;
+  relevantDetections.forEach((detection) => {
+    const [x1, y1, x2, y2] = detection.bbox;
+    const width = x2 - x1;
+    const height = y2 - y1;
 
-      // Draw box
-      ctx.strokeStyle = getColorForConfidence(detection.confidence);
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x1, y1, width, height);
+    // Draw box
+    ctx.strokeStyle = getColorForConfidence(detection.confidence);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, width, height);
 
-      // Draw label background
-      const label = `${detection.class} ${Math.round(detection.confidence * 100)}%`;
-      ctx.font = '14px Arial';
-      const textMetrics = ctx.measureText(label);
-      const textHeight = 20;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(
-          x1,
-          y1 > textHeight ? y1 - textHeight : y1,
-          textMetrics.width + 10,
-          textHeight
-      );
+    // Draw label background
+    const label = `${detection.class} ${
+      Math.round(detection.confidence * 100)
+    }%`;
+    ctx.font = "14px Arial";
+    const textMetrics = ctx.measureText(label);
+    const textHeight = 20;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(
+      x1,
+      y1 > textHeight ? y1 - textHeight : y1,
+      textMetrics.width + 10,
+      textHeight,
+    );
 
-      // Draw label text
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(
-          label,
-          x1 + 5,
-          y1 > textHeight ? y1 - 5 : y1 + 15
-      );
+    // Draw label text
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(
+      label,
+      x1 + 5,
+      y1 > textHeight ? y1 - 5 : y1 + 15,
+    );
   });
 }
 
 // Add the required styles to the document
-document.head.insertAdjacentHTML('beforeend', `
+document.head.insertAdjacentHTML(
+  "beforeend",
+  `
   <style>
       .video-detection-container {
           max-width: 1200px;
@@ -765,4 +914,5 @@ document.head.insertAdjacentHTML('beforeend', `
           font-size: 0.875em;
       }
   </style>
-`);
+`,
+);

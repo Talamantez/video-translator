@@ -16,11 +16,12 @@ import logging
 import uuid
 from flask import stream_with_context
 from summa import keywords
+import cv2
+import pytesseract
+import logging
+
 
 process_bp = Blueprint('process', __name__)
-
-
-# Include all the processing functions here (generate_clip_name, update_running_summary, process_clip, etc.)
 
 def generate_clip_name(speech_text, ocr_text, image_recognition_results):
     all_text = f"{speech_text} {ocr_text}"
@@ -392,4 +393,3 @@ def process_folder():
                 os.remove(audio_path)  # Clean up temporary audio file
 
     return jsonify({"clips": results, "output_folder": folder_id})
-

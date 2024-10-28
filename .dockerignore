@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.env
+.git
+.gitignore
+.DS_Store
+uploads/*
+output/*
+saved_results/*
+venv/
+*.mp4
+*.wav

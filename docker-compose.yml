@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - upload_data:/app/uploads
+      - output_data:/app/output
+      - saved_data:/app/saved_results
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    command: flask run --host=0.0.0.0 --port=5000
+
+volumes:
+  upload_data:
+  output_data:
+  saved_data:

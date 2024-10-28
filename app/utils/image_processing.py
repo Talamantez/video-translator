@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import pytesseract
 from ultralytics import YOLO
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input, decode_predictions
 import logging
@@ -144,3 +145,35 @@ def recognize_images_in_video(video_path, num_frames=10):
             'detections': [],
             'error': str(e)
         }
+        
+
+def ocr_from_video(video_path):
+    video = cv2.VideoCapture(video_path)
+    fps = video.get(cv2.CAP_PROP_FPS)
+    ocr_results = []
+
+    while video.isOpened():
+        ret, frame = video.read()
+        if not ret:
+            break
+
+        # Get frame timestamp
+        timestamp = video.get(cv2.CAP_PROP_POS_FRAMES) / fps
+
+        # Process frame with Tesseract
+        d = pytesseract.image_to_data(frame, output_type=pytesseract.Output.DICT)
+        
+        # Collect results with position information
+        for i in range(len(d['text'])):
+            if int(d['conf'][i]) > 60:  # Filter by confidence
+                result = {
+                    'text': d['text'][i],
+                    'bbox': [d['left'][i], d['top'][i], 
+                            d['width'][i], d['height'][i]],
+                    'confidence': int(d['conf'][i]) / 100,
+                    'timestamp': timestamp
+                }
+                ocr_results.append(result)
+
+    video.release()
+    return ocr_results
