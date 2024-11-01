@@ -6,3 +6,6 @@ __pycache__/
 *$py.class
 .vscode/
 venv/
+concatenated_code.txt
+uploads/
+logs/

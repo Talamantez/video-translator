@@ -1,0 +1,180 @@
+/* app/static/css/video-overlay.css */
+
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+}
+
+.detection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Status Indicator */
+.overlay-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    z-index: 3;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.overlay-status-initializing {
+    background-color: #ffd700;
+    color: #000;
+}
+
+.overlay-status-active {
+    background-color: rgba(0, 255, 0, 0.8);
+    color: #000;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.overlay-status-waiting {
+    background-color: #ffa500;
+    color: #000;
+}
+
+.overlay-status-error {
+    background-color: #ff0000;
+    color: #fff;
+    animation: pulse 2s infinite;
+}
+
+.overlay-status-no-detections {
+    background-color: rgba(128, 128, 128, 0.8);
+    color: #fff;
+}
+
+/* Error State */
+.error-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+}
+
+.error-content {
+    text-align: center;
+    color: #fff;
+    padding: 20px;
+    max-width: 80%;
+}
+
+.error-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    animation: bounce 1s infinite;
+}
+
+.error-message {
+    font-size: 16px;
+    line-height: 1.4;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Detection List */
+.detection-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.detection-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.detection-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.detection-label {
+    font-weight: bold;
+}
+
+.detection-count {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.detection-confidence {
+    color: #008000;
+    font-weight: bold;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Loading state */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

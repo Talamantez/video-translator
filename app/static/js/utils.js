@@ -1,11 +1,97 @@
 // utils.js
 
-const DEBUG = true;
-function debugLog(...args) {
-  if (DEBUG) {
-    console.log(...args);
-  }
-}
+// const DEBUG = true;
+// function debugLog(...args) {
+//   if (DEBUG) {
+//     console.log(...args);
+//   }
+// }
+
+// VideoDetectionOverlay class definition
+// class VideoDetectionOverlay {
+//   constructor(videoElement, canvasElement) {
+//       this.video = videoElement;
+//       this.canvas = canvasElement;
+//       this.ctx = this.canvas.getContext('2d');
+      
+//       // Initialize canvas sizing
+//       this.updateCanvasSize();
+      
+//       // Bind methods
+//       this.updateCanvasSize = this.updateCanvasSize.bind(this);
+//       this.drawDetections = this.drawDetections.bind(this);
+      
+//       // Set up resize observer
+//       this.resizeObserver = new ResizeObserver(entries => {
+//           this.updateCanvasSize();
+//       });
+//       this.resizeObserver.observe(this.video);
+      
+//       // Event listeners
+//       this.video.addEventListener('loadedmetadata', this.updateCanvasSize);
+//   }
+
+//   updateCanvasSize() {
+//       const rect = this.video.getBoundingClientRect();
+//       this.canvas.width = rect.width;
+//       this.canvas.height = rect.height;
+      
+//       // Update scale factors
+//       this.scaleX = this.canvas.width / this.video.videoWidth;
+//       this.scaleY = this.canvas.height / this.video.videoHeight;
+//   }
+
+//   drawDetections(detections, currentTime) {
+//       // Clear previous drawings
+//       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      
+//       if (!Array.isArray(detections)) {
+//           console.warn('No valid detections array provided');
+//           return;
+//       }
+
+//       // Filter relevant detections
+//       const relevantDetections = detections.filter(d => 
+//           d && d.bbox && 
+//           typeof d.timestamp === 'number' && 
+//           Math.abs(d.timestamp - currentTime) < 0.5
+//       );
+
+//       // Draw each detection
+//       relevantDetections.forEach(detection => {
+//           const [x1, y1, x2, y2] = detection.bbox;
+          
+//           // Scale coordinates
+//           const scaledX = x1 * this.scaleX;
+//           const scaledY = y1 * this.scaleY;
+//           const scaledWidth = (x2 - x1) * this.scaleX;
+//           const scaledHeight = (y2 - y1) * this.scaleY;
+
+//           // Draw bounding box
+//           this.ctx.strokeStyle = '#00ff00';
+//           this.ctx.lineWidth = 2;
+//           this.ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+
+//           // Draw label
+//           const label = `${detection.class} (${Math.round(detection.confidence * 100)}%)`;
+//           this.ctx.font = '14px Arial';
+//           const textWidth = this.ctx.measureText(label).width;
+
+//           // Label background
+//           this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+//           this.ctx.fillRect(scaledX, scaledY - 20, textWidth + 10, 20);
+
+//           // Label text
+//           this.ctx.fillStyle = '#ffffff';
+//           this.ctx.fillText(label, scaledX + 5, scaledY - 5);
+//       });
+//   }
+
+//   destroy() {
+//       this.resizeObserver.disconnect();
+//       this.video.removeEventListener('loadedmetadata', this.updateCanvasSize);
+//   }
+// }
 
 function showToast(message, type = "info") {
   const toastContainer = document.querySelector(".toast-container");
@@ -646,7 +732,6 @@ function updateSavedResultsList() {
 }
 
 function displayClip(clip, outputFolder, resultContainer) {
-  console.log("Displaying clip:", clip);
   const viewer = createVideoViewer(clip, outputFolder);
   resultContainer.appendChild(viewer);
   resultContainer.scrollTop = resultContainer.scrollHeight;
@@ -696,122 +781,73 @@ function processOCRResults(ocrText, translatedText) {
   }).filter((result) => result.text.trim() !== "");
 }
 
+
 function createVideoViewer(clip, outputFolder) {
-  console.log("Creating viewer for clip:", clip);
-  const container = document.createElement("div");
-  container.className = "video-detection-container mb-4";
+  try {
+      const container = document.createElement('div');
+      container.className = 'video-detection-container position-relative';
 
-  // Create elements first
-  const video = document.createElement("video");
-  video.className = "w-100";
-  video.controls = true;
+      // Create video element
+      const video = document.createElement('video');
+      video.className = 'w-100';
+      video.controls = true;
+      video.innerHTML = `<source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">`;
 
-  const canvas = document.createElement("canvas");
-  canvas.className = "detection-overlay";
+      // Create canvas for detections
+      const canvas = document.createElement('canvas');
+      canvas.className = 'detection-overlay';
+      canvas.style.position = 'absolute';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
+      canvas.style.pointerEvents = 'none';
 
-  container.innerHTML = `
-      <div class="card">
-          <div class="card-header">
-              <h5 class="mb-0">${clip.clip_name || "Unnamed Clip"}</h5>
-          </div>
-          <div class="card-body">
-              <div class="video-wrapper position-relative">
-                  <div id="video-container"></div>
-              </div>
-              
-              <div class="mt-3">
-                  <div class="accordion" id="clip-${Date.now()}">
-                      <div class="accordion-item">
-                          <h6 class="accordion-header">
-                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                      data-bs-target="#detections-${Date.now()}">
-                                  Detections (${
-    clip.image_recognition?.detections?.length || 0
-  })
-                              </button>
-                          </h6>
-                          <div id="detections-${Date.now()}" class="accordion-collapse collapse">
-                              <div class="accordion-body detection-list">
-                                  ${renderDetections(clip.image_recognition)}
-                              </div>
-                          </div>
-                      </div>
-                      
-                      <div class="accordion-item">
-                          <h6 class="accordion-header">
-                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                      data-bs-target="#ocr-${Date.now()}">
-                                  OCR & Translation
-                              </button>
-                          </h6>
-                          <div id="ocr-${Date.now()}" class="accordion-collapse collapse">
-                              <div class="accordion-body">
-                                  <div class="text-content">${
-    clip.ocr_text || "No text detected."
-  }</div>
-                                  <div class="text-content text-muted mt-2">
-                                      ${
-    clip.ocr_translated || "No translation available."
+      // Add elements to container
+      container.appendChild(video);
+      container.appendChild(canvas);
+
+      // Initialize overlay after video loads
+      video.addEventListener('loadedmetadata', () => {
+          const overlay = new VideoDetectionOverlay(video, canvas);
+          
+          // Update detections on time update
+          video.addEventListener('timeupdate', () => {
+              if (clip.image_recognition && Array.isArray(clip.image_recognition.detections)) {
+                  overlay.drawDetections(clip.image_recognition.detections, video.currentTime);
+              }
+          });
+
+          // Store overlay instance for cleanup
+          container._overlay = overlay;
+      });
+
+      return container;
+  } catch (error) {
+      console.error('Error creating video viewer:', error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-danger';
+      errorDiv.textContent = 'Error initializing video viewer';
+      return errorDiv;
   }
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-
-                      <div class="accordion-item">
-                          <h6 class="accordion-header">
-                              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                      data-bs-target="#speech-${Date.now()}">
-                                  Speech Recognition
-                              </button>
-                          </h6>
-                          <div id="speech-${Date.now()}" class="accordion-collapse collapse">
-                              <div class="accordion-body">
-                                  <div class="text-content">${
-    clip.speech_text || "No speech detected."
-  }</div>
-                                  <div class="text-content text-muted mt-2">
-                                      ${
-    clip.speech_translated || "No translation available."
-  }
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  `;
-
-  // Insert video and canvas
-  const videoWrapper = container.querySelector(".video-wrapper");
-  video.innerHTML =
-    `<source src="/output/${outputFolder}/${clip.filename}" type="video/mp4">`;
-  videoWrapper.appendChild(video);
-  videoWrapper.appendChild(canvas);
-
-  // Set up autoplay on scroll
-  setupAutoplay(video);
-
-  // Set up overlays
-  const overlayData = {
-    image_recognition: clip.image_recognition,
-    ocr_text: clip.ocr_text,
-    ocr_translated: clip.ocr_translated,
-    speech_text: clip.speech_text,
-    speech_translated: clip.speech_translated,
-  };
-
-  // Initialize video and canvas
-  video.addEventListener("loadedmetadata", () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    setupVideoViewer(video, canvas, overlayData);
-  });
-
-  return container;
 }
+// Add required styles
+// const style = document.createElement('style');
+// style.textContent = `
+//   .video-detection-container {
+//       position: relative;
+//       width: 100%;
+//       background: #000;
+//   }
+
+//   .detection-overlay {
+//       position: absolute;
+//       top: 0;
+//       left: 0;
+//       pointer-events: none;
+//       width: 100%;
+//       height: 100%;
+//   }
+// `;
+// document.head.appendChild(style);
 
 // Add this function for autoplay
 function setupAutoplay(video) {
@@ -988,3 +1024,23 @@ document.head.insertAdjacentHTML(
   </style>
 `,
 );
+// Add required styles
+// const overlayStyles = document.createElement('style');
+// overlayStyles.textContent = `
+//     .video-detection-container {
+//         position: relative;
+//         width: 100%;
+//         margin-bottom: 1rem;
+//         background: #000;
+//     }
+    
+//     .detection-overlay {
+//         position: absolute;
+//         top: 0;
+//         left: 0;
+//         pointer-events: none;
+//         width: 100%;
+//         height: 100%;
+//     }
+// `;
+// document.head.appendChild(overlayStyles);

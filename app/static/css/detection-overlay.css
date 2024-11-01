@@ -1,0 +1,83 @@
+/* app/static/css/detection-overlay.css */
+
+.video-container {
+    position: relative;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.video-container video {
+    width: 100%;
+    display: block;
+}
+
+.detection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.detection-overlay-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+/* Confidence level colors */
+.confidence-high {
+    stroke: #00ff00;
+    stroke-width: 2px;
+}
+
+.confidence-medium {
+    stroke: #ffff00;
+    stroke-width: 2px;
+}
+
+.confidence-low {
+    stroke: #ff0000;
+    stroke-width: 2px;
+}
+
+/* Label styles */
+.detection-label {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* Animation for new detections */
+@keyframes detection-appear {
+    from {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.detection-new {
+    animation: detection-appear 0.3s ease-out;
+}
+
+/* Controls visibility */
+.video-container:hover .detection-overlay {
+    opacity: 1;
+}
+
+.detection-overlay {
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
